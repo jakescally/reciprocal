@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+
+  body {
+    background: linear-gradient(
+      135deg,
+      #fafafa 0%,
+      #f3e8ff 25%,
+      #e9d5ff 50%,
+      #ddd6fe 75%,
+      #e0e7ff 100%
+    );
+    @apply text-gray-900;
+    @apply font-sans;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.6),
+      rgba(255, 255, 255, 0.4)
+    );
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow:
+      0 8px 32px 0 rgba(78, 3, 129, 0.12),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+      inset 0 -1px 0 0 rgba(78, 3, 129, 0.05);
+  }
+
+  .glass-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-hover:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 12px 40px 0 rgba(78, 3, 129, 0.15),
+      0 0 24px rgba(78, 3, 129, 0.1),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+  }
+}
