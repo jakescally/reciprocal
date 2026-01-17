@@ -5,8 +5,7 @@ export function FloatingMenu() {
     <button
       className={cn(
         "fixed top-6 right-6 z-50",
-        "glass rounded-full p-4",
-        "transition-all duration-300 hover:shadow-lg hover:scale-105",
+        "glass glass-hover rounded-full p-4",
         "flex items-center justify-center",
         "w-14 h-14"
       )}

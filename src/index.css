@@ -8,14 +8,13 @@
   }
 
   body {
-    background: linear-gradient(
-      135deg,
-      #fafafa 0%,
-      #f3e8ff 25%,
-      #e9d5ff 50%,
-      #ddd6fe 75%,
-      #e0e7ff 100%
-    );
+    background: linear-gradient(135deg,
+        #fafafa 0%,
+        #ede9fe 20%,
+        #ddd6fe 40%,
+        #c4b5fd 60%,
+        #a78bfa 80%,
+        #8b5cf6 100%);
     @apply text-gray-900;
     @apply font-sans;
   }
@@ -23,11 +22,9 @@
 
 @layer utilities {
   .glass {
-    background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.6),
-      rgba(255, 255, 255, 0.4)
-    );
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.6),
+        rgba(255, 255, 255, 0.4));
     backdrop-filter: blur(16px) saturate(180%);
     -webkit-backdrop-filter: blur(16px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.3);
