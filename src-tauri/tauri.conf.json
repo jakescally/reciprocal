@@ -15,8 +15,8 @@
         "title": "Reciprocal",
         "width": 1400,
         "height": 900,
-        "minWidth": 800,
-        "minHeight": 600
+        "minWidth": 1000,
+        "minHeight": 700
       }
     ],
     "security": {

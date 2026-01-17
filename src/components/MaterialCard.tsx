@@ -12,7 +12,7 @@ export function MaterialCard({ name, formula, lastModified = "2 days ago" }: Mat
       className={cn(
         "glass glass-hover rounded-2xl p-6",
         "cursor-pointer select-none",
-        "min-h-[180px] flex flex-col justify-between"
+        "w-[280px] h-[180px] flex flex-col justify-between"
       )}
     >
       <div>

@@ -63,45 +63,51 @@ function App() {
   ];
 
   return (
-    <div className="min-h-screen w-full overflow-auto">
+    <div className="h-screen w-full overflow-hidden flex flex-col">
       <FloatingLogo />
       <FloatingMenu />
 
-      <main className="container mx-auto px-8 pt-32 pb-16">
-        <section className="mb-12">
-          <h2 className="text-3xl font-bold text-gray-800 mb-8 font-kadwa">
-            Projects
-          </h2>
+      <main className="flex-1 px-8 pt-32 pb-8 overflow-y-auto">
+        <div className="max-w-[1600px] mx-auto space-y-12">
+          <section>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6 font-kadwa">
+              Projects
+            </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <AddMaterialCard />
-            {materials.map((material, index) => (
-              <MaterialCard
-                key={index}
-                name={material.name}
-                formula={material.formula}
-                lastModified={material.lastModified}
-              />
-            ))}
-          </div>
-        </section>
+            <div className="flex gap-6 overflow-x-auto py-8 px-8 -mx-8 -my-8">
+              <div className="flex-shrink-0">
+                <AddMaterialCard />
+              </div>
+              {materials.map((material, index) => (
+                <div key={index} className="flex-shrink-0">
+                  <MaterialCard
+                    name={material.name}
+                    formula={material.formula}
+                    lastModified={material.lastModified}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
 
-        <section className="mb-12">
-          <h2 className="text-3xl font-bold text-gray-800 mb-8 font-kadwa">
-            Analysis Tools
-          </h2>
+          <section>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6 font-kadwa">
+              Analysis Tools
+            </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {tools.map((tool, index) => (
-              <ToolCard
-                key={index}
-                name={tool.name}
-                description={tool.description}
-                icon={tool.icon}
-              />
-            ))}
-          </div>
-        </section>
+            <div className="flex gap-6 overflow-x-auto py-8 px-8 -mx-8 -my-8">
+              {tools.map((tool, index) => (
+                <div key={index} className="flex-shrink-0">
+                  <ToolCard
+                    name={tool.name}
+                    description={tool.description}
+                    icon={tool.icon}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
       </main>
     </div>
   );

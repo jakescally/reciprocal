@@ -7,7 +7,7 @@ export function AddMaterialCard() {
         "rounded-2xl p-6 glass-hover",
         "border-2 border-dashed border-primary/40",
         "cursor-pointer select-none",
-        "min-h-[180px] flex flex-col items-center justify-center",
+        "w-[280px] h-[180px] flex flex-col items-center justify-center",
         "bg-white/40 backdrop-blur-sm",
         "hover:border-primary/60 hover:bg-white/50"
       )}

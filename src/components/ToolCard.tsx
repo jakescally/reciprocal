@@ -12,7 +12,7 @@ export function ToolCard({ name, description, icon }: ToolCardProps) {
       className={cn(
         "glass glass-hover rounded-2xl p-6",
         "cursor-pointer select-none",
-        "min-h-[180px] flex flex-col"
+        "w-[280px] h-[180px] flex flex-col"
       )}
     >
       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
