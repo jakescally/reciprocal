@@ -1,27 +1,49 @@
+import { useState } from "react";
 import { FloatingLogo } from "./components/FloatingLogo";
 import { FloatingMenu } from "./components/FloatingMenu";
 import { MaterialCard } from "./components/MaterialCard";
 import { AddMaterialCard } from "./components/AddMaterialCard";
 import { ToolCard } from "./components/ToolCard";
+import { NewProjectCard } from "./components/NewProjectCard";
+import { cn } from "./lib/utils";
+
+interface Project {
+  id: string;
+  name: string;
+  formula: string;
+  lastModified: string;
+}
 
 function App() {
-  const materials = [
+  const [projects, setProjects] = useState<Project[]>([
     {
-      name: "NiSi",
-      formula: "NiSi",
-      lastModified: "2 days ago",
-    },
-    {
+      id: "1",
       name: "Silver Cobaltate",
       formula: "AgCoO<sub>2</sub>",
       lastModified: "1 week ago",
     },
-    {
-      name: "Lanthanum Antimonide",
-      formula: "LaSb",
-      lastModified: "3 weeks ago",
-    },
-  ];
+  ]);
+
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [peekNewProject, setPeekNewProject] = useState(false);
+  const [newProjectKey, setNewProjectKey] = useState(0);
+
+  const handleOpenNewProject = () => {
+    setNewProjectKey((k) => k + 1);
+    setPeekNewProject(false);
+    setShowNewProject(true);
+  };
+
+  const handleCreateProject = (name: string, formula: string) => {
+    const newProject: Project = {
+      id: Date.now().toString(),
+      name,
+      formula,
+      lastModified: "Just now",
+    };
+    setProjects((prev) => [newProject, ...prev]);
+    setShowNewProject(false);
+  };
 
   const tools = [
     {
@@ -76,14 +98,18 @@ function App() {
 
             <div className="flex gap-6 overflow-x-auto py-8 px-8 -mx-8 -my-8">
               <div className="flex-shrink-0">
-                <AddMaterialCard />
+                <AddMaterialCard
+                  onClick={handleOpenNewProject}
+                  onMouseEnter={() => setPeekNewProject(true)}
+                  onMouseLeave={() => setPeekNewProject(false)}
+                />
               </div>
-              {materials.map((material, index) => (
-                <div key={index} className="flex-shrink-0">
+              {projects.map((project) => (
+                <div key={project.id} className="flex-shrink-0">
                   <MaterialCard
-                    name={material.name}
-                    formula={material.formula}
-                    lastModified={material.lastModified}
+                    name={project.name}
+                    formula={project.formula}
+                    lastModified={project.lastModified}
                   />
                 </div>
               ))}
@@ -109,6 +135,43 @@ function App() {
           </section>
         </div>
       </main>
+
+      {/* New Project Overlay */}
+      <div
+        className={cn(
+          "fixed inset-0 z-50 flex items-end justify-center transition-all duration-300",
+          showNewProject
+            ? "pointer-events-auto"
+            : "pointer-events-none"
+        )}
+      >
+        {/* Dimmed backdrop */}
+        <div
+          className={cn(
+            "absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300",
+            showNewProject ? "opacity-100" : "opacity-0"
+          )}
+          onClick={() => setShowNewProject(false)}
+        />
+
+        {/* Card container with slide-up animation */}
+        <div
+          className={cn(
+            "relative mb-8 transition-transform duration-300 ease-out",
+            showNewProject
+              ? "translate-y-0"
+              : peekNewProject
+                ? "translate-y-[calc(100%-45px)]"
+                : "translate-y-[calc(100%+2rem)]"
+          )}
+        >
+          <NewProjectCard
+            key={newProjectKey}
+            onClose={() => setShowNewProject(false)}
+            onCreate={handleCreateProject}
+          />
+        </div>
+      </div>
     </div>
   );
 }
