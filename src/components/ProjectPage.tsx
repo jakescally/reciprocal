@@ -66,7 +66,7 @@ export function ProjectPage({ project, onBack }: ProjectPageProps) {
   ];
 
   return (
-    <div className="h-screen w-full overflow-hidden flex flex-col animate-fade-in">
+    <div className="h-screen w-full overflow-hidden flex flex-col">
       {/* Top Navigation */}
       <FloatingLogo />
       <button

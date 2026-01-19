@@ -1,12 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { FloatingLogo } from "./components/FloatingLogo";
 import { FloatingMenu } from "./components/FloatingMenu";
-import { MaterialCard, CardRect } from "./components/MaterialCard";
+import { MaterialCard } from "./components/MaterialCard";
 import { AddMaterialCard } from "./components/AddMaterialCard";
 import { ToolCard } from "./components/ToolCard";
 import { NewProjectCard } from "./components/NewProjectCard";
 import { ProjectPage } from "./components/ProjectPage";
-import { ProjectTransition } from "./components/ProjectTransition";
 import { cn } from "./lib/utils";
 import {
   Project,
@@ -17,8 +16,9 @@ import {
 
 type View =
   | { type: "dashboard" }
-  | { type: "transitioning"; project: Project; startRect: CardRect }
-  | { type: "project"; project: Project };
+  | { type: "transitioning-to-project"; project: Project }
+  | { type: "project"; project: Project }
+  | { type: "transitioning-to-dashboard"; project: Project };
 
 function App() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -68,18 +68,20 @@ function App() {
     }
   };
 
-  const handleOpenProject = (project: Project, rect: CardRect) => {
-    setCurrentView({ type: "transitioning", project, startRect: rect });
+  const handleOpenProject = (project: Project) => {
+    setCurrentView({ type: "transitioning-to-project", project });
+    setTimeout(() => {
+      setCurrentView({ type: "project", project });
+    }, 400);
   };
 
-  const handleTransitionComplete = useCallback(() => {
-    if (currentView.type === "transitioning") {
-      setCurrentView({ type: "project", project: currentView.project });
-    }
-  }, [currentView]);
-
   const handleBackToDashboard = () => {
-    setCurrentView({ type: "dashboard" });
+    if (currentView.type === "project") {
+      setCurrentView({ type: "transitioning-to-dashboard", project: currentView.project });
+      setTimeout(() => {
+        setCurrentView({ type: "dashboard" });
+      }, 400);
+    }
   };
 
   const tools = [
@@ -121,125 +123,144 @@ function App() {
     },
   ];
 
-  // Render project page if a project is selected
-  if (currentView.type === "project") {
-    return (
-      <ProjectPage
-        project={currentView.project}
-        onBack={handleBackToDashboard}
-      />
-    );
-  }
+  const showDashboard = currentView.type === "dashboard" || currentView.type === "transitioning-to-project" || currentView.type === "transitioning-to-dashboard";
+  const showProject = currentView.type === "project" || currentView.type === "transitioning-to-project" || currentView.type === "transitioning-to-dashboard";
 
-  // Render dashboard (possibly with transition overlay)
+  const dashboardExiting = currentView.type === "transitioning-to-project";
+  const dashboardEntering = currentView.type === "transitioning-to-dashboard";
+  const projectExiting = currentView.type === "transitioning-to-dashboard";
+  const projectEntering = currentView.type === "transitioning-to-project";
+
+  const currentProject = currentView.type !== "dashboard" ? currentView.project : null;
+
   return (
-    <div className="h-screen w-full overflow-hidden flex flex-col">
-      <FloatingLogo />
-      <FloatingMenu />
-
-      <main className="flex-1 px-8 pt-32 pb-8 overflow-y-auto">
-        <div className="max-w-[1600px] mx-auto space-y-12">
-          <section>
-            <h2 className="text-3xl font-bold text-gray-800 mb-6 font-kadwa">
-              Projects
-            </h2>
-
-            <div className="flex gap-6 overflow-x-auto py-16 px-16 -mx-16 -my-16">
-              <div className="flex-shrink-0">
-                <AddMaterialCard
-                  onClick={handleOpenNewProject}
-                  onMouseEnter={() => setPeekNewProject(true)}
-                  onMouseLeave={() => setPeekNewProject(false)}
-                />
-              </div>
-              {loading ? (
-                <div className="flex items-center justify-center px-8 text-gray-500">
-                  Loading projects...
-                </div>
-              ) : error ? (
-                <div className="flex items-center justify-center px-8 text-red-500">
-                  Error: {error}
-                </div>
-              ) : (
-                projects.map((project) => (
-                  <div key={project.id} className="flex-shrink-0">
-                    <MaterialCard
-                      name={project.name}
-                      formula={project.formula}
-                      lastModified={formatRelativeTime(project.updated_at)}
-                      isNew={project.id === newlyCreatedId}
-                      onClick={(rect) => handleOpenProject(project, rect)}
-                    />
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-3xl font-bold text-gray-800 mb-6 font-kadwa">
-              Analysis Tools
-            </h2>
-
-            <div className="flex gap-6 overflow-x-auto py-16 px-16 -mx-16 -my-16">
-              {tools.map((tool, index) => (
-                <div key={index} className="flex-shrink-0">
-                  <ToolCard
-                    name={tool.name}
-                    description={tool.description}
-                    icon={tool.icon}
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      </main>
-
-      {/* New Project Overlay */}
-      <div
-        className={cn(
-          "fixed inset-0 z-50 flex items-end justify-center transition-all duration-300",
-          showNewProject
-            ? "pointer-events-auto"
-            : "pointer-events-none"
-        )}
-      >
-        {/* Dimmed backdrop */}
+    <div className="h-screen w-full overflow-hidden relative">
+      {/* Dashboard View */}
+      {showDashboard && (
         <div
           className={cn(
-            "absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300",
-            showNewProject ? "opacity-100" : "opacity-0"
-          )}
-          onClick={handleCloseNewProject}
-        />
-
-        {/* Card container with slide-up animation */}
-        <div
-          className={cn(
-            "relative mb-8 transition-transform duration-300 ease-out",
-            showNewProject
-              ? "translate-y-0"
-              : peekNewProject
-                ? "translate-y-[calc(100%-45px)]"
-                : "translate-y-[calc(100%+2rem)]"
+            "absolute inset-0 flex flex-col transition-all duration-400 ease-out",
+            dashboardExiting && "opacity-0 scale-95 pointer-events-none",
+            dashboardEntering && "opacity-100 scale-100",
+            !dashboardExiting && !dashboardEntering && "opacity-100 scale-100"
           )}
         >
-          <NewProjectCard
-            key={newProjectKey}
-            onClose={handleCloseNewProject}
-            onCreate={handleCreateProject}
+          <FloatingLogo />
+          <FloatingMenu />
+
+          <main className="flex-1 px-8 pt-32 pb-8 overflow-y-auto">
+            <div className="max-w-[1600px] mx-auto space-y-12">
+              <section>
+                <h2 className="text-3xl font-bold text-gray-800 mb-6 font-kadwa">
+                  Projects
+                </h2>
+
+                <div className="flex gap-6 overflow-x-auto py-16 px-16 -mx-16 -my-16">
+                  <div className="flex-shrink-0">
+                    <AddMaterialCard
+                      onClick={handleOpenNewProject}
+                      onMouseEnter={() => setPeekNewProject(true)}
+                      onMouseLeave={() => setPeekNewProject(false)}
+                    />
+                  </div>
+                  {loading ? (
+                    <div className="flex items-center justify-center px-8 text-gray-500">
+                      Loading projects...
+                    </div>
+                  ) : error ? (
+                    <div className="flex items-center justify-center px-8 text-red-500">
+                      Error: {error}
+                    </div>
+                  ) : (
+                    projects.map((project) => (
+                      <div key={project.id} className="flex-shrink-0">
+                        <MaterialCard
+                          name={project.name}
+                          formula={project.formula}
+                          lastModified={formatRelativeTime(project.updated_at)}
+                          isNew={project.id === newlyCreatedId}
+                          onClick={() => handleOpenProject(project)}
+                        />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-3xl font-bold text-gray-800 mb-6 font-kadwa">
+                  Analysis Tools
+                </h2>
+
+                <div className="flex gap-6 overflow-x-auto py-16 px-16 -mx-16 -my-16">
+                  {tools.map((tool, index) => (
+                    <div key={index} className="flex-shrink-0">
+                      <ToolCard
+                        name={tool.name}
+                        description={tool.description}
+                        icon={tool.icon}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </main>
+
+          {/* New Project Overlay */}
+          <div
+            className={cn(
+              "fixed inset-0 z-50 flex items-end justify-center transition-all duration-300",
+              showNewProject
+                ? "pointer-events-auto"
+                : "pointer-events-none"
+            )}
+          >
+            {/* Dimmed backdrop */}
+            <div
+              className={cn(
+                "absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300",
+                showNewProject ? "opacity-100" : "opacity-0"
+              )}
+              onClick={handleCloseNewProject}
+            />
+
+            {/* Card container with slide-up animation */}
+            <div
+              className={cn(
+                "relative mb-8 transition-transform duration-300 ease-out",
+                showNewProject
+                  ? "translate-y-0"
+                  : peekNewProject
+                    ? "translate-y-[calc(100%-45px)]"
+                    : "translate-y-[calc(100%+2rem)]"
+              )}
+            >
+              <NewProjectCard
+                key={newProjectKey}
+                onClose={handleCloseNewProject}
+                onCreate={handleCreateProject}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Project View */}
+      {showProject && currentProject && (
+        <div
+          className={cn(
+            "absolute inset-0 transition-all duration-400 ease-out",
+            projectEntering && "opacity-0 scale-105",
+            projectExiting && "opacity-0 scale-105 pointer-events-none",
+            !projectEntering && !projectExiting && "opacity-100 scale-100"
+          )}
+        >
+          <ProjectPage
+            project={currentProject}
+            onBack={handleBackToDashboard}
           />
         </div>
-      </div>
-
-      {/* Project Transition Overlay */}
-      {currentView.type === "transitioning" && (
-        <ProjectTransition
-          project={currentView.project}
-          startRect={currentView.startRect}
-          onAnimationComplete={handleTransitionComplete}
-        />
       )}
     </div>
   );
