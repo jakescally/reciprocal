@@ -133,8 +133,42 @@ function App() {
 
   const currentProject = currentView.type !== "dashboard" ? currentView.project : null;
 
+  const showBackButton = currentView.type === "project" || currentView.type === "transitioning-to-dashboard";
+
   return (
     <div className="h-screen w-full overflow-hidden relative">
+      {/* Static Navigation - unaffected by page transitions */}
+      <FloatingLogo />
+      <FloatingMenu />
+
+      {/* Back Button - only shown on project page */}
+      {showBackButton && (
+        <button
+          onClick={handleBackToDashboard}
+          className={cn(
+            "fixed top-6 left-56 z-50",
+            "glass glass-hover rounded-full p-4",
+            "flex items-center justify-center",
+            "w-14 h-14"
+          )}
+          aria-label="Back to dashboard"
+        >
+          <svg
+            className="w-5 h-5 text-gray-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+      )}
+
       {/* Dashboard View */}
       {showDashboard && (
         <div
@@ -145,9 +179,6 @@ function App() {
             !dashboardExiting && !dashboardEntering && "opacity-100 scale-100"
           )}
         >
-          <FloatingLogo />
-          <FloatingMenu />
-
           <main className="flex-1 px-8 pt-32 pb-8 overflow-y-auto">
             <div className="max-w-[1600px] mx-auto space-y-12">
               <section>
@@ -256,10 +287,7 @@ function App() {
             !projectEntering && !projectExiting && "opacity-100 scale-100"
           )}
         >
-          <ProjectPage
-            project={currentProject}
-            onBack={handleBackToDashboard}
-          />
+          <ProjectPage project={currentProject} />
         </div>
       )}
     </div>

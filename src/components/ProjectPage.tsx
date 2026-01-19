@@ -1,15 +1,11 @@
 import { Project, formatRelativeTime } from "../lib/projects";
 import { MiniAppCard } from "./MiniAppCard";
-import { FloatingLogo } from "./FloatingLogo";
-import { FloatingMenu } from "./FloatingMenu";
-import { cn } from "../lib/utils";
 
 interface ProjectPageProps {
   project: Project;
-  onBack: () => void;
 }
 
-export function ProjectPage({ project, onBack }: ProjectPageProps) {
+export function ProjectPage({ project }: ProjectPageProps) {
   // Placeholder lattice parameters (will come from CIF file later)
   const latticeParams = {
     a: "2.8665",
@@ -67,34 +63,6 @@ export function ProjectPage({ project, onBack }: ProjectPageProps) {
 
   return (
     <div className="h-screen w-full overflow-hidden flex flex-col">
-      {/* Top Navigation */}
-      <FloatingLogo />
-      <button
-        onClick={onBack}
-        className={cn(
-          "fixed top-6 left-56 z-50",
-          "glass glass-hover rounded-full p-4",
-          "flex items-center justify-center",
-          "w-14 h-14"
-        )}
-        aria-label="Back to dashboard"
-      >
-        <svg
-          className="w-5 h-5 text-gray-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-      </button>
-      <FloatingMenu />
-
       <main className="flex-1 overflow-y-auto pt-28 px-8">
         <div className="max-w-[1600px] mx-auto">
           {/* Header Section */}
