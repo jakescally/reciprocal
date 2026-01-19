@@ -12,6 +12,9 @@ pub struct Project {
     pub formula: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default)]
+    pub has_cif: bool,
+    pub cif_filename: Option<String>,
 }
 
 fn get_projects_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -74,6 +77,8 @@ fn create_project(app: tauri::AppHandle, name: String, formula: String) -> Resul
         formula,
         created_at: now,
         updated_at: now,
+        has_cif: false,
+        cif_filename: None,
     };
 
     // Create project directory
@@ -129,15 +134,110 @@ fn delete_project(app: tauri::AppHandle, id: String) -> Result<(), String> {
     Ok(())
 }
 
+fn get_project_dir(app: &tauri::AppHandle, project_id: &str) -> Result<PathBuf, String> {
+    let projects_dir = get_projects_dir(app)?;
+    let project_dir = projects_dir.join(project_id);
+
+    if !project_dir.exists() {
+        return Err(format!("Project directory for {} not found", project_id));
+    }
+
+    Ok(project_dir)
+}
+
+#[tauri::command]
+fn import_cif_file(
+    app: tauri::AppHandle,
+    project_id: String,
+    source_path: String,
+    original_filename: String,
+) -> Result<Project, String> {
+    let project_dir = get_project_dir(&app, &project_id)?;
+    let project_file = project_dir.join("project.json");
+
+    // Read existing project
+    let content = fs::read_to_string(&project_file)
+        .map_err(|e| format!("Failed to read project file: {}", e))?;
+    let mut project: Project = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse project file: {}", e))?;
+
+    // Copy CIF file to project directory as structure.cif
+    let dest_path = project_dir.join("structure.cif");
+    fs::copy(&source_path, &dest_path)
+        .map_err(|e| format!("Failed to copy CIF file: {}", e))?;
+
+    // Update project metadata
+    project.has_cif = true;
+    project.cif_filename = Some(original_filename);
+    project.updated_at = Utc::now();
+
+    // Save updated project
+    let updated_content = serde_json::to_string_pretty(&project)
+        .map_err(|e| format!("Failed to serialize project: {}", e))?;
+    fs::write(&project_file, updated_content)
+        .map_err(|e| format!("Failed to write project file: {}", e))?;
+
+    Ok(project)
+}
+
+#[tauri::command]
+fn read_cif_file(app: tauri::AppHandle, project_id: String) -> Result<String, String> {
+    let project_dir = get_project_dir(&app, &project_id)?;
+    let cif_path = project_dir.join("structure.cif");
+
+    if !cif_path.exists() {
+        return Err("CIF file not found".to_string());
+    }
+
+    fs::read_to_string(&cif_path)
+        .map_err(|e| format!("Failed to read CIF file: {}", e))
+}
+
+#[tauri::command]
+fn save_crystal_data(
+    app: tauri::AppHandle,
+    project_id: String,
+    crystal_data_json: String,
+) -> Result<(), String> {
+    let project_dir = get_project_dir(&app, &project_id)?;
+    let data_path = project_dir.join("cif_data.json");
+
+    fs::write(&data_path, crystal_data_json)
+        .map_err(|e| format!("Failed to save crystal data: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn load_crystal_data(app: tauri::AppHandle, project_id: String) -> Result<Option<String>, String> {
+    let project_dir = get_project_dir(&app, &project_id)?;
+    let data_path = project_dir.join("cif_data.json");
+
+    if !data_path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(&data_path)
+        .map_err(|e| format!("Failed to read crystal data: {}", e))?;
+
+    Ok(Some(content))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             load_projects,
             create_project,
             update_project,
-            delete_project
+            delete_project,
+            import_cif_file,
+            read_cif_file,
+            save_crystal_data,
+            load_crystal_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -84,6 +84,17 @@ function App() {
     }
   };
 
+  const handleProjectUpdate = (updatedProject: Project) => {
+    // Update in projects array
+    setProjects((prev) =>
+      prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
+    );
+    // Update current view if on this project
+    if (currentView.type === "project" && currentView.project.id === updatedProject.id) {
+      setCurrentView({ type: "project", project: updatedProject });
+    }
+  };
+
   const tools = [
     {
       name: "Brillouin Zone Viewer",
@@ -133,7 +144,9 @@ function App() {
 
   const currentProject = currentView.type !== "dashboard" ? currentView.project : null;
 
-  const showBackButton = currentView.type === "project" || currentView.type === "transitioning-to-dashboard";
+  const showBackButton = currentView.type === "project" || currentView.type === "transitioning-to-project" || currentView.type === "transitioning-to-dashboard";
+  const backButtonEntering = currentView.type === "transitioning-to-project";
+  const backButtonExiting = currentView.type === "transitioning-to-dashboard";
 
   return (
     <div className="h-screen w-full overflow-hidden relative">
@@ -149,7 +162,11 @@ function App() {
             "fixed top-6 left-56 z-50",
             "glass glass-hover rounded-full p-4",
             "flex items-center justify-center",
-            "w-14 h-14"
+            "w-14 h-14",
+            "transition-opacity duration-400 ease-out",
+            backButtonEntering && "opacity-0",
+            backButtonExiting && "opacity-0",
+            !backButtonEntering && !backButtonExiting && "opacity-100"
           )}
           aria-label="Back to dashboard"
         >
@@ -287,7 +304,7 @@ function App() {
             !projectEntering && !projectExiting && "opacity-100 scale-100"
           )}
         >
-          <ProjectPage project={currentProject} />
+          <ProjectPage project={currentProject} onProjectUpdate={handleProjectUpdate} />
         </div>
       )}
     </div>

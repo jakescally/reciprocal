@@ -1,21 +1,48 @@
-import { Project, formatRelativeTime } from "../lib/projects";
+import { useEffect, useState } from "react";
+import {
+  Project,
+  CrystalData,
+  loadCrystalData,
+  formatRelativeTime,
+} from "../lib/projects";
+import { formatWithUncertainty } from "../lib/cifParser";
 import { MiniAppCard } from "./MiniAppCard";
+import { CIFUploadZone } from "./CIFUploadZone";
+import { ExpandableSection } from "./ExpandableSection";
+import { AtomSitesTable } from "./AtomSitesTable";
 
 interface ProjectPageProps {
   project: Project;
+  onProjectUpdate: (project: Project) => void;
 }
 
-export function ProjectPage({ project }: ProjectPageProps) {
-  // Placeholder lattice parameters (will come from CIF file later)
-  const latticeParams = {
-    a: "2.8665",
-    b: "2.8665",
-    c: "2.8665",
-    alpha: "90.00",
-    beta: "90.00",
-    gamma: "90.00",
-    spaceGroup: "Fm-3m",
-    volume: "23.55",
+export function ProjectPage({ project, onProjectUpdate }: ProjectPageProps) {
+  const [crystalData, setCrystalData] = useState<CrystalData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load crystal data on mount or when project changes
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        if (project.has_cif) {
+          const data = await loadCrystalData(project.id);
+          setCrystalData(data);
+        } else {
+          setCrystalData(null);
+        }
+      } catch (error) {
+        console.error("Failed to load crystal data:", error);
+        setCrystalData(null);
+      }
+      setIsLoading(false);
+    };
+    loadData();
+  }, [project.id, project.has_cif]);
+
+  const handleCIFImported = (updatedProject: Project, data: CrystalData) => {
+    setCrystalData(data);
+    onProjectUpdate(updatedProject);
   };
 
   const miniApps = [
@@ -83,69 +110,286 @@ export function ProjectPage({ project }: ProjectPageProps) {
                   modified {formatRelativeTime(project.updated_at)}
                 </div>
 
-                {/* Lattice Parameters */}
-                <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-                  <div className="text-sm">
-                    <span className="text-gray-500">Space Group:</span>{" "}
-                    <span className="text-gray-800 font-medium">
-                      {latticeParams.spaceGroup}
-                    </span>
+                {/* Crystal Data Display */}
+                {crystalData ? (
+                  <div className="space-y-4">
+                    {/* Primary Info Row */}
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                      {crystalData.space_group_HM && (
+                        <div className="text-sm">
+                          <span className="text-gray-500">Space Group:</span>{" "}
+                          <span className="text-gray-800 font-medium">
+                            {crystalData.space_group_HM}
+                            {crystalData.space_group_IT_number &&
+                              ` (${crystalData.space_group_IT_number})`}
+                          </span>
+                        </div>
+                      )}
+                      {crystalData.structure_type && (
+                        <div className="text-sm">
+                          <span className="text-gray-500">Structure Type:</span>{" "}
+                          <span className="text-gray-800 font-medium">
+                            {crystalData.structure_type}
+                          </span>
+                        </div>
+                      )}
+                      {crystalData.cell_formula_units_Z && (
+                        <div className="text-sm">
+                          <span className="text-gray-500">Z:</span>{" "}
+                          <span className="text-gray-800 font-medium">
+                            {crystalData.cell_formula_units_Z}
+                          </span>
+                        </div>
+                      )}
+                      {crystalData.cell_volume && (
+                        <div className="text-sm">
+                          <span className="text-gray-500">Volume:</span>{" "}
+                          <span className="text-gray-800 font-medium">
+                            {crystalData.cell_volume.toFixed(2)} A³
+                          </span>
+                        </div>
+                      )}
+                      {crystalData.density && (
+                        <div className="text-sm">
+                          <span className="text-gray-500">Density:</span>{" "}
+                          <span className="text-gray-800 font-medium">
+                            {crystalData.density.toFixed(2)} g/cm³
+                          </span>
+                        </div>
+                      )}
+                      {crystalData.measurement_temperature && (
+                        <div className="text-sm">
+                          <span className="text-gray-500">Temperature:</span>{" "}
+                          <span className="text-gray-800 font-medium">
+                            {crystalData.measurement_temperature} K
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Lattice Parameters */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                        <div className="text-sm">
+                          <span className="text-gray-500">a:</span>{" "}
+                          <span className="text-gray-800 font-medium font-mono">
+                            {formatWithUncertainty(
+                              crystalData.cell_length_a,
+                              "A"
+                            )}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-500">α:</span>{" "}
+                          <span className="text-gray-800 font-medium font-mono">
+                            {crystalData.cell_angle_alpha.value.toFixed(2)}°
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-500">b:</span>{" "}
+                          <span className="text-gray-800 font-medium font-mono">
+                            {formatWithUncertainty(
+                              crystalData.cell_length_b,
+                              "A"
+                            )}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-500">β:</span>{" "}
+                          <span className="text-gray-800 font-medium font-mono">
+                            {crystalData.cell_angle_beta.value.toFixed(2)}°
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-500">c:</span>{" "}
+                          <span className="text-gray-800 font-medium font-mono">
+                            {formatWithUncertainty(
+                              crystalData.cell_length_c,
+                              "A"
+                            )}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-500">γ:</span>{" "}
+                          <span className="text-gray-800 font-medium font-mono">
+                            {crystalData.cell_angle_gamma.value.toFixed(2)}°
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">Volume:</span>{" "}
-                    <span className="text-gray-800 font-medium">
-                      {latticeParams.volume} A³
-                    </span>
+                ) : !isLoading ? (
+                  <div className="text-sm text-gray-500">
+                    Upload a CIF file to see crystal structure data
                   </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">a:</span>{" "}
-                    <span className="text-gray-800 font-medium">
-                      {latticeParams.a} A
-                    </span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">α:</span>{" "}
-                    <span className="text-gray-800 font-medium">
-                      {latticeParams.alpha}°
-                    </span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">b:</span>{" "}
-                    <span className="text-gray-800 font-medium">
-                      {latticeParams.b} A
-                    </span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">β:</span>{" "}
-                    <span className="text-gray-800 font-medium">
-                      {latticeParams.beta}°
-                    </span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">c:</span>{" "}
-                    <span className="text-gray-800 font-medium">
-                      {latticeParams.c} A
-                    </span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">γ:</span>{" "}
-                    <span className="text-gray-800 font-medium">
-                      {latticeParams.gamma}°
-                    </span>
-                  </div>
-                </div>
+                ) : null}
               </div>
 
-              {/* Right Side - 3D Model Placeholder */}
+              {/* Right Side - 3D Preview or Upload Zone */}
               <div className="w-[350px] h-[280px] flex-shrink-0">
-                <div className="w-full h-full bg-black rounded-2xl flex items-center justify-center">
-                  <span className="text-gray-600 text-sm">
-                    Unit Cell Preview
-                  </span>
-                </div>
+                {project.has_cif && crystalData ? (
+                  <div className="w-full h-full bg-black rounded-2xl flex items-center justify-center">
+                    <span className="text-gray-600 text-sm">
+                      Unit Cell Preview
+                    </span>
+                  </div>
+                ) : (
+                  <CIFUploadZone
+                    projectId={project.id}
+                    onCIFImported={handleCIFImported}
+                  />
+                )}
               </div>
             </div>
           </div>
+
+          {/* Expandable Sections - Only show when crystal data is available */}
+          {crystalData && (
+            <div className="py-8 space-y-4">
+              {/* Citation & Source */}
+              {crystalData.citation && (
+                <ExpandableSection title="Citation & Source" defaultExpanded>
+                  <div className="space-y-2 text-sm">
+                    {crystalData.citation.title && (
+                      <div>
+                        <span className="text-gray-500">Title:</span>{" "}
+                        <span className="text-gray-800">
+                          {crystalData.citation.title}
+                        </span>
+                      </div>
+                    )}
+                    {crystalData.citation.journal && (
+                      <div>
+                        <span className="text-gray-500">Journal:</span>{" "}
+                        <span className="text-gray-800">
+                          {crystalData.citation.journal}
+                          {crystalData.citation.year &&
+                            ` (${crystalData.citation.year})`}
+                          {crystalData.citation.volume &&
+                            ` ${crystalData.citation.volume}`}
+                          {crystalData.citation.page_first &&
+                            `:${crystalData.citation.page_first}`}
+                          {crystalData.citation.page_last &&
+                            `-${crystalData.citation.page_last}`}
+                        </span>
+                      </div>
+                    )}
+                    {crystalData.citation.authors.length > 0 && (
+                      <div>
+                        <span className="text-gray-500">Authors:</span>{" "}
+                        <span className="text-gray-800">
+                          {crystalData.citation.authors.join("; ")}
+                        </span>
+                      </div>
+                    )}
+                    {crystalData.database_code && (
+                      <div>
+                        <span className="text-gray-500">ICSD:</span>{" "}
+                        <span className="text-gray-800">
+                          {crystalData.database_code}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </ExpandableSection>
+              )}
+
+              {/* Atom Sites */}
+              <ExpandableSection
+                title="Atom Sites"
+                itemCount={crystalData.atom_sites.length}
+              >
+                <AtomSitesTable atoms={crystalData.atom_sites} />
+              </ExpandableSection>
+
+              {/* Symmetry Operations */}
+              {crystalData.symmetry_operations.length > 0 && (
+                <ExpandableSection
+                  title="Symmetry Operations"
+                  itemCount={crystalData.symmetry_operations.length}
+                >
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {crystalData.symmetry_operations.map((op, index) => (
+                      <div
+                        key={index}
+                        className="text-sm font-mono text-gray-700 bg-white/50 px-3 py-1.5 rounded"
+                      >
+                        {op}
+                      </div>
+                    ))}
+                  </div>
+                </ExpandableSection>
+              )}
+
+              {/* Anisotropic Displacement Parameters */}
+              {crystalData.anisotropic_params.length > 0 && (
+                <ExpandableSection
+                  title="Anisotropic Displacement Parameters"
+                  itemCount={crystalData.anisotropic_params.length}
+                >
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-2 px-2 font-medium text-gray-600">
+                            Label
+                          </th>
+                          <th className="text-right py-2 px-2 font-medium text-gray-600">
+                            β₁₁
+                          </th>
+                          <th className="text-right py-2 px-2 font-medium text-gray-600">
+                            β₂₂
+                          </th>
+                          <th className="text-right py-2 px-2 font-medium text-gray-600">
+                            β₃₃
+                          </th>
+                          <th className="text-right py-2 px-2 font-medium text-gray-600">
+                            β₁₂
+                          </th>
+                          <th className="text-right py-2 px-2 font-medium text-gray-600">
+                            β₁₃
+                          </th>
+                          <th className="text-right py-2 px-2 font-medium text-gray-600">
+                            β₂₃
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {crystalData.anisotropic_params.map((param, index) => (
+                          <tr
+                            key={index}
+                            className="border-b border-gray-100 hover:bg-white/50"
+                          >
+                            <td className="py-2 px-2 text-gray-800 font-medium">
+                              {param.label}
+                            </td>
+                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                              {param.beta_11.toFixed(5)}
+                            </td>
+                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                              {param.beta_22.toFixed(5)}
+                            </td>
+                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                              {param.beta_33.toFixed(5)}
+                            </td>
+                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                              {param.beta_12.toFixed(5)}
+                            </td>
+                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                              {param.beta_13.toFixed(5)}
+                            </td>
+                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                              {param.beta_23.toFixed(5)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </ExpandableSection>
+              )}
+            </div>
+          )}
 
           {/* Mini Apps Section */}
           <div className="py-12">
@@ -162,7 +406,6 @@ export function ProjectPage({ project }: ProjectPageProps) {
                   icon={app.icon}
                   hasData={false}
                   onClick={() => {
-                    // TODO: Open mini-app
                     console.log(`Opening ${app.id}`);
                   }}
                 />
