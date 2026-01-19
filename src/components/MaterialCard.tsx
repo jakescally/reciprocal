@@ -1,15 +1,40 @@
+import { useRef } from "react";
 import { cn } from "../lib/utils";
+
+export interface CardRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
 
 interface MaterialCardProps {
   name: string;
   formula: string;
   lastModified?: string;
   isNew?: boolean;
+  onClick?: (rect: CardRect) => void;
 }
 
-export function MaterialCard({ name, formula, lastModified = "2 days ago", isNew = false }: MaterialCardProps) {
+export function MaterialCard({ name, formula, lastModified = "2 days ago", isNew = false, onClick }: MaterialCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleClick = () => {
+    if (onClick && cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      onClick({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+  };
+
   return (
     <div
+      ref={cardRef}
+      onClick={handleClick}
       className={cn(
         "glass glass-hover rounded-2xl p-6",
         "cursor-pointer select-none",

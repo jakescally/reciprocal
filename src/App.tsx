@@ -1,33 +1,48 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FloatingLogo } from "./components/FloatingLogo";
 import { FloatingMenu } from "./components/FloatingMenu";
-import { MaterialCard } from "./components/MaterialCard";
+import { MaterialCard, CardRect } from "./components/MaterialCard";
 import { AddMaterialCard } from "./components/AddMaterialCard";
 import { ToolCard } from "./components/ToolCard";
 import { NewProjectCard } from "./components/NewProjectCard";
+import { ProjectPage } from "./components/ProjectPage";
+import { ProjectTransition } from "./components/ProjectTransition";
 import { cn } from "./lib/utils";
+import {
+  Project,
+  loadProjects,
+  createProject,
+  formatRelativeTime,
+} from "./lib/projects";
 
-interface Project {
-  id: string;
-  name: string;
-  formula: string;
-  lastModified: string;
-}
+type View =
+  | { type: "dashboard" }
+  | { type: "transitioning"; project: Project; startRect: CardRect }
+  | { type: "project"; project: Project };
 
 function App() {
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: "1",
-      name: "Silver Cobaltate",
-      formula: "AgCoO<sub>2</sub>",
-      lastModified: "1 week ago",
-    },
-  ]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<View>({ type: "dashboard" });
 
   const [showNewProject, setShowNewProject] = useState(false);
   const [peekNewProject, setPeekNewProject] = useState(false);
   const [newProjectKey, setNewProjectKey] = useState(0);
   const [newlyCreatedId, setNewlyCreatedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadProjects()
+      .then((loadedProjects) => {
+        setProjects(loadedProjects);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load projects:", err);
+        setError(String(err));
+        setLoading(false);
+      });
+  }, []);
 
   const handleOpenNewProject = () => {
     setPeekNewProject(false);
@@ -36,23 +51,35 @@ function App() {
 
   const handleCloseNewProject = () => {
     setShowNewProject(false);
-    setNewProjectKey((k) => k + 1); // Reset for next peek/open
+    setNewProjectKey((k) => k + 1);
   };
 
-  const handleCreateProject = (name: string, formula: string) => {
-    const newId = Date.now().toString();
-    const newProject: Project = {
-      id: newId,
-      name,
-      formula,
-      lastModified: "Just now",
-    };
-    setProjects((prev) => [newProject, ...prev]);
-    setNewlyCreatedId(newId);
-    handleCloseNewProject();
+  const handleCreateProject = async (name: string, formula: string) => {
+    try {
+      const newProject = await createProject(name, formula);
+      setProjects((prev) => [newProject, ...prev]);
+      setNewlyCreatedId(newProject.id);
+      handleCloseNewProject();
 
-    // Clear the animation class after it completes
-    setTimeout(() => setNewlyCreatedId(null), 1000);
+      setTimeout(() => setNewlyCreatedId(null), 2000);
+    } catch (err) {
+      console.error("Failed to create project:", err);
+      setError(String(err));
+    }
+  };
+
+  const handleOpenProject = (project: Project, rect: CardRect) => {
+    setCurrentView({ type: "transitioning", project, startRect: rect });
+  };
+
+  const handleTransitionComplete = useCallback(() => {
+    if (currentView.type === "transitioning") {
+      setCurrentView({ type: "project", project: currentView.project });
+    }
+  }, [currentView]);
+
+  const handleBackToDashboard = () => {
+    setCurrentView({ type: "dashboard" });
   };
 
   const tools = [
@@ -94,6 +121,17 @@ function App() {
     },
   ];
 
+  // Render project page if a project is selected
+  if (currentView.type === "project") {
+    return (
+      <ProjectPage
+        project={currentView.project}
+        onBack={handleBackToDashboard}
+      />
+    );
+  }
+
+  // Render dashboard (possibly with transition overlay)
   return (
     <div className="h-screen w-full overflow-hidden flex flex-col">
       <FloatingLogo />
@@ -106,7 +144,7 @@ function App() {
               Projects
             </h2>
 
-            <div className="flex gap-6 overflow-x-auto py-8 px-8 -mx-8 -my-8">
+            <div className="flex gap-6 overflow-x-auto py-16 px-16 -mx-16 -my-16">
               <div className="flex-shrink-0">
                 <AddMaterialCard
                   onClick={handleOpenNewProject}
@@ -114,16 +152,27 @@ function App() {
                   onMouseLeave={() => setPeekNewProject(false)}
                 />
               </div>
-              {projects.map((project) => (
-                <div key={project.id} className="flex-shrink-0">
-                  <MaterialCard
-                    name={project.name}
-                    formula={project.formula}
-                    lastModified={project.lastModified}
-                    isNew={project.id === newlyCreatedId}
-                  />
+              {loading ? (
+                <div className="flex items-center justify-center px-8 text-gray-500">
+                  Loading projects...
                 </div>
-              ))}
+              ) : error ? (
+                <div className="flex items-center justify-center px-8 text-red-500">
+                  Error: {error}
+                </div>
+              ) : (
+                projects.map((project) => (
+                  <div key={project.id} className="flex-shrink-0">
+                    <MaterialCard
+                      name={project.name}
+                      formula={project.formula}
+                      lastModified={formatRelativeTime(project.updated_at)}
+                      isNew={project.id === newlyCreatedId}
+                      onClick={(rect) => handleOpenProject(project, rect)}
+                    />
+                  </div>
+                ))
+              )}
             </div>
           </section>
 
@@ -132,7 +181,7 @@ function App() {
               Analysis Tools
             </h2>
 
-            <div className="flex gap-6 overflow-x-auto py-8 px-8 -mx-8 -my-8">
+            <div className="flex gap-6 overflow-x-auto py-16 px-16 -mx-16 -my-16">
               {tools.map((tool, index) => (
                 <div key={index} className="flex-shrink-0">
                   <ToolCard
@@ -183,6 +232,15 @@ function App() {
           />
         </div>
       </div>
+
+      {/* Project Transition Overlay */}
+      {currentView.type === "transitioning" && (
+        <ProjectTransition
+          project={currentView.project}
+          startRect={currentView.startRect}
+          onAnimationComplete={handleTransitionComplete}
+        />
+      )}
     </div>
   );
 }
