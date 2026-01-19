@@ -175,8 +175,8 @@ export function NewProjectCard({ onClose, onCreate }: NewProjectCardProps) {
   const actinides = elements.filter((el) => el.row === 9);
 
   return (
-    <div className="glass rounded-3xl w-[95vw] max-w-[1100px] max-h-[90vh] overflow-hidden">
-      <div className="p-8 max-h-[90vh] overflow-y-auto">
+    <div className="glass rounded-3xl w-[95vw] max-w-[1100px] max-h-[90vh] overflow-hidden relative">
+      <div className="p-8 max-h-[90vh] overflow-y-auto pb-20">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800 font-kadwa">
@@ -453,29 +453,21 @@ export function NewProjectCard({ onClose, onCreate }: NewProjectCardProps) {
           </div>
         </div>
       </div>
+      </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-3">
-        <button
-          onClick={onClose}
-          className="px-6 py-3 rounded-xl bg-gray-200/50 hover:bg-gray-300/50 text-gray-700 font-medium transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleCreate}
-          disabled={!projectName.trim() || selectedElements.length === 0}
-          className={cn(
-            "px-6 py-3 rounded-xl font-medium transition-all",
-            projectName.trim() && selectedElements.length > 0
-              ? "bg-primary text-white hover:bg-primary/90 active:scale-95"
-              : "bg-gray-400/40 text-gray-600 cursor-not-allowed"
-          )}
-        >
-          Create Project
-        </button>
-      </div>
-      </div>
+      {/* Floating Create Button */}
+      <button
+        onClick={handleCreate}
+        disabled={!projectName.trim() || selectedElements.length === 0}
+        className={cn(
+          "absolute bottom-6 right-6 px-6 py-3 rounded-xl font-medium transition-all shadow-lg",
+          projectName.trim() && selectedElements.length > 0
+            ? "bg-primary text-white hover:bg-primary/90 active:scale-95"
+            : "bg-gray-400/70 text-gray-600 cursor-not-allowed"
+        )}
+      >
+        Create Project
+      </button>
     </div>
   );
 }

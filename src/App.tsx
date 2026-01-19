@@ -27,22 +27,32 @@ function App() {
   const [showNewProject, setShowNewProject] = useState(false);
   const [peekNewProject, setPeekNewProject] = useState(false);
   const [newProjectKey, setNewProjectKey] = useState(0);
+  const [newlyCreatedId, setNewlyCreatedId] = useState<string | null>(null);
 
   const handleOpenNewProject = () => {
-    setNewProjectKey((k) => k + 1);
     setPeekNewProject(false);
     setShowNewProject(true);
   };
 
+  const handleCloseNewProject = () => {
+    setShowNewProject(false);
+    setNewProjectKey((k) => k + 1); // Reset for next peek/open
+  };
+
   const handleCreateProject = (name: string, formula: string) => {
+    const newId = Date.now().toString();
     const newProject: Project = {
-      id: Date.now().toString(),
+      id: newId,
       name,
       formula,
       lastModified: "Just now",
     };
     setProjects((prev) => [newProject, ...prev]);
-    setShowNewProject(false);
+    setNewlyCreatedId(newId);
+    handleCloseNewProject();
+
+    // Clear the animation class after it completes
+    setTimeout(() => setNewlyCreatedId(null), 1000);
   };
 
   const tools = [
@@ -110,6 +120,7 @@ function App() {
                     name={project.name}
                     formula={project.formula}
                     lastModified={project.lastModified}
+                    isNew={project.id === newlyCreatedId}
                   />
                 </div>
               ))}
@@ -151,7 +162,7 @@ function App() {
             "absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300",
             showNewProject ? "opacity-100" : "opacity-0"
           )}
-          onClick={() => setShowNewProject(false)}
+          onClick={handleCloseNewProject}
         />
 
         {/* Card container with slide-up animation */}
@@ -167,7 +178,7 @@ function App() {
         >
           <NewProjectCard
             key={newProjectKey}
-            onClose={() => setShowNewProject(false)}
+            onClose={handleCloseNewProject}
             onCreate={handleCreateProject}
           />
         </div>
