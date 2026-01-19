@@ -243,151 +243,155 @@ export function ProjectPage({ project, onProjectUpdate }: ProjectPageProps) {
             </div>
           </div>
 
-          {/* Expandable Sections - Only show when crystal data is available */}
+          {/* More Details - Nested expandable sections */}
           {crystalData && (
-            <div className="py-8 space-y-4">
-              {/* Citation & Source */}
-              {crystalData.citation && (
-                <ExpandableSection title="Citation & Source" defaultExpanded>
-                  <div className="space-y-2 text-sm">
-                    {crystalData.citation.title && (
-                      <div>
-                        <span className="text-gray-500">Title:</span>{" "}
-                        <span className="text-gray-800">
-                          {crystalData.citation.title}
-                        </span>
-                      </div>
-                    )}
-                    {crystalData.citation.journal && (
-                      <div>
-                        <span className="text-gray-500">Journal:</span>{" "}
-                        <span className="text-gray-800">
-                          {crystalData.citation.journal}
-                          {crystalData.citation.year &&
-                            ` (${crystalData.citation.year})`}
-                          {crystalData.citation.volume &&
-                            ` ${crystalData.citation.volume}`}
-                          {crystalData.citation.page_first &&
-                            `:${crystalData.citation.page_first}`}
-                          {crystalData.citation.page_last &&
-                            `-${crystalData.citation.page_last}`}
-                        </span>
-                      </div>
-                    )}
-                    {crystalData.citation.authors.length > 0 && (
-                      <div>
-                        <span className="text-gray-500">Authors:</span>{" "}
-                        <span className="text-gray-800">
-                          {crystalData.citation.authors.join("; ")}
-                        </span>
-                      </div>
-                    )}
-                    {crystalData.database_code && (
-                      <div>
-                        <span className="text-gray-500">ICSD:</span>{" "}
-                        <span className="text-gray-800">
-                          {crystalData.database_code}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </ExpandableSection>
-              )}
+            <div className="mt-6">
+              <ExpandableSection title="More Details">
+                <div className="space-y-4">
+                  {/* Atom Sites */}
+                  <ExpandableSection
+                    title="Atom Sites"
+                    itemCount={crystalData.atom_sites.length}
+                  >
+                    <AtomSitesTable atoms={crystalData.atom_sites} />
+                  </ExpandableSection>
 
-              {/* Atom Sites */}
-              <ExpandableSection
-                title="Atom Sites"
-                itemCount={crystalData.atom_sites.length}
-              >
-                <AtomSitesTable atoms={crystalData.atom_sites} />
-              </ExpandableSection>
-
-              {/* Symmetry Operations */}
-              {crystalData.symmetry_operations.length > 0 && (
-                <ExpandableSection
-                  title="Symmetry Operations"
-                  itemCount={crystalData.symmetry_operations.length}
-                >
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {crystalData.symmetry_operations.map((op, index) => (
-                      <div
-                        key={index}
-                        className="text-sm font-mono text-gray-700 bg-white/50 px-3 py-1.5 rounded"
-                      >
-                        {op}
-                      </div>
-                    ))}
-                  </div>
-                </ExpandableSection>
-              )}
-
-              {/* Anisotropic Displacement Parameters */}
-              {crystalData.anisotropic_params.length > 0 && (
-                <ExpandableSection
-                  title="Anisotropic Displacement Parameters"
-                  itemCount={crystalData.anisotropic_params.length}
-                >
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200">
-                          <th className="text-left py-2 px-2 font-medium text-gray-600">
-                            Label
-                          </th>
-                          <th className="text-right py-2 px-2 font-medium text-gray-600">
-                            β₁₁
-                          </th>
-                          <th className="text-right py-2 px-2 font-medium text-gray-600">
-                            β₂₂
-                          </th>
-                          <th className="text-right py-2 px-2 font-medium text-gray-600">
-                            β₃₃
-                          </th>
-                          <th className="text-right py-2 px-2 font-medium text-gray-600">
-                            β₁₂
-                          </th>
-                          <th className="text-right py-2 px-2 font-medium text-gray-600">
-                            β₁₃
-                          </th>
-                          <th className="text-right py-2 px-2 font-medium text-gray-600">
-                            β₂₃
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {crystalData.anisotropic_params.map((param, index) => (
-                          <tr
+                  {/* Symmetry Operations */}
+                  {crystalData.symmetry_operations.length > 0 && (
+                    <ExpandableSection
+                      title="Symmetry Operations"
+                      itemCount={crystalData.symmetry_operations.length}
+                    >
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                        {crystalData.symmetry_operations.map((op, index) => (
+                          <div
                             key={index}
-                            className="border-b border-gray-100 hover:bg-white/50"
+                            className="text-sm font-mono text-gray-700 bg-white/50 px-3 py-1.5 rounded"
                           >
-                            <td className="py-2 px-2 text-gray-800 font-medium">
-                              {param.label}
-                            </td>
-                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
-                              {param.beta_11.toFixed(5)}
-                            </td>
-                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
-                              {param.beta_22.toFixed(5)}
-                            </td>
-                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
-                              {param.beta_33.toFixed(5)}
-                            </td>
-                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
-                              {param.beta_12.toFixed(5)}
-                            </td>
-                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
-                              {param.beta_13.toFixed(5)}
-                            </td>
-                            <td className="py-2 px-2 text-right text-gray-700 font-mono">
-                              {param.beta_23.toFixed(5)}
-                            </td>
-                          </tr>
+                            {op}
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </ExpandableSection>
-              )}
+                      </div>
+                    </ExpandableSection>
+                  )}
+
+                  {/* Anisotropic Displacement Parameters */}
+                  {crystalData.anisotropic_params.length > 0 && (
+                    <ExpandableSection
+                      title="Anisotropic Displacement Parameters"
+                      itemCount={crystalData.anisotropic_params.length}
+                    >
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-200">
+                              <th className="text-left py-2 px-2 font-medium text-gray-600">
+                                Label
+                              </th>
+                              <th className="text-right py-2 px-2 font-medium text-gray-600">
+                                β₁₁
+                              </th>
+                              <th className="text-right py-2 px-2 font-medium text-gray-600">
+                                β₂₂
+                              </th>
+                              <th className="text-right py-2 px-2 font-medium text-gray-600">
+                                β₃₃
+                              </th>
+                              <th className="text-right py-2 px-2 font-medium text-gray-600">
+                                β₁₂
+                              </th>
+                              <th className="text-right py-2 px-2 font-medium text-gray-600">
+                                β₁₃
+                              </th>
+                              <th className="text-right py-2 px-2 font-medium text-gray-600">
+                                β₂₃
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {crystalData.anisotropic_params.map((param, index) => (
+                              <tr
+                                key={index}
+                                className="border-b border-gray-100 hover:bg-white/50"
+                              >
+                                <td className="py-2 px-2 text-gray-800 font-medium">
+                                  {param.label}
+                                </td>
+                                <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                                  {param.beta_11.toFixed(5)}
+                                </td>
+                                <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                                  {param.beta_22.toFixed(5)}
+                                </td>
+                                <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                                  {param.beta_33.toFixed(5)}
+                                </td>
+                                <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                                  {param.beta_12.toFixed(5)}
+                                </td>
+                                <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                                  {param.beta_13.toFixed(5)}
+                                </td>
+                                <td className="py-2 px-2 text-right text-gray-700 font-mono">
+                                  {param.beta_23.toFixed(5)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </ExpandableSection>
+                  )}
+
+                  {/* Citation & Source - Last */}
+                  {crystalData.citation && (
+                    <ExpandableSection title="Citation & Source">
+                      <div className="space-y-2 text-sm">
+                        {crystalData.citation.title && (
+                          <div>
+                            <span className="text-gray-500">Title:</span>{" "}
+                            <span className="text-gray-800">
+                              {crystalData.citation.title}
+                            </span>
+                          </div>
+                        )}
+                        {crystalData.citation.journal && (
+                          <div>
+                            <span className="text-gray-500">Journal:</span>{" "}
+                            <span className="text-gray-800">
+                              {crystalData.citation.journal}
+                              {crystalData.citation.year &&
+                                ` (${crystalData.citation.year})`}
+                              {crystalData.citation.volume &&
+                                ` ${crystalData.citation.volume}`}
+                              {crystalData.citation.page_first &&
+                                `:${crystalData.citation.page_first}`}
+                              {crystalData.citation.page_last &&
+                                `-${crystalData.citation.page_last}`}
+                            </span>
+                          </div>
+                        )}
+                        {crystalData.citation.authors.length > 0 && (
+                          <div>
+                            <span className="text-gray-500">Authors:</span>{" "}
+                            <span className="text-gray-800">
+                              {crystalData.citation.authors.join("; ")}
+                            </span>
+                          </div>
+                        )}
+                        {crystalData.database_code && (
+                          <div>
+                            <span className="text-gray-500">ICSD:</span>{" "}
+                            <span className="text-gray-800">
+                              {crystalData.database_code}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </ExpandableSection>
+                  )}
+                </div>
+              </ExpandableSection>
             </div>
           )}
 
