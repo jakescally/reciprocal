@@ -10,6 +10,7 @@ import { MiniAppCard } from "./MiniAppCard";
 import { CIFUploadZone } from "./CIFUploadZone";
 import { ExpandableSection } from "./ExpandableSection";
 import { AtomSitesTable } from "./AtomSitesTable";
+import { UnitCellViewer } from "./UnitCellViewer";
 
 interface ProjectPageProps {
   project: Project;
@@ -228,11 +229,7 @@ export function ProjectPage({ project, onProjectUpdate }: ProjectPageProps) {
               {/* Right Side - 3D Preview or Upload Zone */}
               <div className="w-[350px] h-[280px] flex-shrink-0">
                 {project.has_cif && crystalData ? (
-                  <div className="w-full h-full bg-black rounded-2xl flex items-center justify-center">
-                    <span className="text-gray-600 text-sm">
-                      Unit Cell Preview
-                    </span>
-                  </div>
+                  <UnitCellViewer crystalData={crystalData} />
                 ) : (
                   <CIFUploadZone
                     projectId={project.id}
