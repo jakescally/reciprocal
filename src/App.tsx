@@ -6,6 +6,8 @@ import { AddMaterialCard } from "./components/AddMaterialCard";
 import { ToolCard } from "./components/ToolCard";
 import { NewProjectCard } from "./components/NewProjectCard";
 import { ProjectPage } from "./components/ProjectPage";
+import { BandStructurePage } from "./components/BandStructurePage";
+import { BrillouinZonePage } from "./components/BrillouinZonePage";
 import { cn } from "./lib/utils";
 import {
   Project,
@@ -16,11 +18,16 @@ import {
   formatRelativeTime,
 } from "./lib/projects";
 
+type MiniApp = "band-structure" | "dos" | "brillouin-zone";
+
 type View =
   | { type: "dashboard" }
   | { type: "transitioning-to-project"; project: Project }
   | { type: "project"; project: Project }
-  | { type: "transitioning-to-dashboard"; project: Project };
+  | { type: "transitioning-to-dashboard"; project: Project }
+  | { type: "miniapp"; project: Project; miniApp: MiniApp }
+  | { type: "transitioning-to-miniapp"; project: Project; miniApp: MiniApp }
+  | { type: "transitioning-from-miniapp"; project: Project; miniApp: MiniApp };
 
 function App() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -84,6 +91,24 @@ function App() {
       setCurrentView({ type: "transitioning-to-dashboard", project: currentView.project });
       setTimeout(() => {
         setCurrentView({ type: "dashboard" });
+      }, 400);
+    }
+  };
+
+  const handleOpenMiniApp = (miniApp: MiniApp) => {
+    if (currentView.type === "project") {
+      setCurrentView({ type: "transitioning-to-miniapp", project: currentView.project, miniApp });
+      setTimeout(() => {
+        setCurrentView({ type: "miniapp", project: currentView.project, miniApp });
+      }, 400);
+    }
+  };
+
+  const handleBackToProject = () => {
+    if (currentView.type === "miniapp") {
+      setCurrentView({ type: "transitioning-from-miniapp", project: currentView.project, miniApp: currentView.miniApp });
+      setTimeout(() => {
+        setCurrentView({ type: "project", project: currentView.project });
       }, 400);
     }
   };
@@ -181,18 +206,22 @@ function App() {
   ];
 
   const showDashboard = currentView.type === "dashboard" || currentView.type === "transitioning-to-project" || currentView.type === "transitioning-to-dashboard";
-  const showProject = currentView.type === "project" || currentView.type === "transitioning-to-project" || currentView.type === "transitioning-to-dashboard";
+  const showProject = currentView.type === "project" || currentView.type === "transitioning-to-project" || currentView.type === "transitioning-to-dashboard" || currentView.type === "transitioning-to-miniapp" || currentView.type === "transitioning-from-miniapp";
+  const showMiniApp = currentView.type === "miniapp" || currentView.type === "transitioning-to-miniapp" || currentView.type === "transitioning-from-miniapp";
 
   const dashboardExiting = currentView.type === "transitioning-to-project";
   const dashboardEntering = currentView.type === "transitioning-to-dashboard";
-  const projectExiting = currentView.type === "transitioning-to-dashboard";
-  const projectEntering = currentView.type === "transitioning-to-project";
+  const projectExiting = currentView.type === "transitioning-to-dashboard" || currentView.type === "transitioning-to-miniapp";
+  const projectEntering = currentView.type === "transitioning-to-project" || currentView.type === "transitioning-from-miniapp";
+  const miniAppExiting = currentView.type === "transitioning-from-miniapp";
+  const miniAppEntering = currentView.type === "transitioning-to-miniapp";
 
   const currentProject = currentView.type !== "dashboard" ? currentView.project : null;
+  const currentMiniApp = (currentView.type === "miniapp" || currentView.type === "transitioning-to-miniapp" || currentView.type === "transitioning-from-miniapp") ? currentView.miniApp : null;
 
-  const showBackButton = currentView.type === "project" || currentView.type === "transitioning-to-project" || currentView.type === "transitioning-to-dashboard";
-  const backButtonEntering = currentView.type === "transitioning-to-project";
-  const backButtonExiting = currentView.type === "transitioning-to-dashboard";
+  const showBackButton = currentView.type === "project" || currentView.type === "transitioning-to-project" || currentView.type === "transitioning-to-dashboard" || currentView.type === "miniapp" || currentView.type === "transitioning-to-miniapp" || currentView.type === "transitioning-from-miniapp";
+  const backButtonEntering = currentView.type === "transitioning-to-project" || currentView.type === "transitioning-to-miniapp";
+  const backButtonExiting = currentView.type === "transitioning-to-dashboard" || currentView.type === "transitioning-from-miniapp";
 
   return (
     <div className="h-screen w-full overflow-hidden relative">
@@ -203,10 +232,10 @@ function App() {
         onDeleteProject={handleDeleteProject}
       />
 
-      {/* Back Button - only shown on project page */}
+      {/* Back Button - shown on project page and mini-app */}
       {showBackButton && (
         <button
-          onClick={handleBackToDashboard}
+          onClick={currentView.type === "miniapp" ? handleBackToProject : handleBackToDashboard}
           className={cn(
             "fixed top-6 left-56 z-50",
             "glass glass-hover rounded-full p-4",
@@ -233,6 +262,25 @@ function App() {
             />
           </svg>
         </button>
+      )}
+
+      {/* Mini-App Title - shown when in mini-app view */}
+      {showMiniApp && currentMiniApp && (
+        <h1
+          className={cn(
+            "fixed top-6 left-[19rem] z-50",
+            "text-2xl font-bold text-gray-800 font-kadwa",
+            "h-14 flex items-center",
+            "transition-opacity duration-400 ease-out",
+            miniAppEntering && "opacity-0",
+            miniAppExiting && "opacity-0",
+            !miniAppEntering && !miniAppExiting && "opacity-100"
+          )}
+        >
+          {currentMiniApp === "band-structure" && "Band Structure"}
+          {currentMiniApp === "dos" && "Density of States"}
+          {currentMiniApp === "brillouin-zone" && "Brillouin Zone"}
+        </h1>
       )}
 
       {/* Dashboard View */}
@@ -357,7 +405,27 @@ function App() {
             project={currentProject}
             onProjectUpdate={handleProjectUpdate}
             onEditProject={handleOpenEditProject}
+            onOpenMiniApp={(miniAppId) => handleOpenMiniApp(miniAppId as MiniApp)}
           />
+        </div>
+      )}
+
+      {/* Mini-App View */}
+      {showMiniApp && currentProject && currentMiniApp && (
+        <div
+          className={cn(
+            "absolute inset-0 transition-all duration-400 ease-out",
+            miniAppEntering && "opacity-0 scale-105",
+            miniAppExiting && "opacity-0 scale-105 pointer-events-none",
+            !miniAppEntering && !miniAppExiting && "opacity-100 scale-100"
+          )}
+        >
+          {currentMiniApp === "band-structure" && (
+            <BandStructurePage project={currentProject} />
+          )}
+          {currentMiniApp === "brillouin-zone" && (
+            <BrillouinZonePage project={currentProject} />
+          )}
         </div>
       )}
 

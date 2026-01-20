@@ -136,6 +136,111 @@ export async function loadCrystalData(
   return null;
 }
 
+// ============ Band Structure Functions ============
+
+export interface BandStructureInfo {
+  id: string;
+  name: string;
+  created_at: string;
+  qtl_filename: string;
+  klist_filename: string;
+}
+
+export async function importBandStructure(
+  projectId: string,
+  name: string,
+  qtlSourcePath: string,
+  qtlFilename: string,
+  klistSourcePath: string,
+  klistFilename: string
+): Promise<BandStructureInfo> {
+  return invoke<BandStructureInfo>("import_band_structure", {
+    projectId,
+    name,
+    qtlSourcePath,
+    qtlFilename,
+    klistSourcePath,
+    klistFilename,
+  });
+}
+
+export async function listBandStructures(
+  projectId: string
+): Promise<BandStructureInfo[]> {
+  return invoke<BandStructureInfo[]>("list_band_structures", { projectId });
+}
+
+export async function loadBandStructureFiles(
+  projectId: string,
+  bandStructureId: string
+): Promise<[string, string]> {
+  return invoke<[string, string]>("load_band_structure_files", {
+    projectId,
+    bandStructureId,
+  });
+}
+
+export async function deleteBandStructure(
+  projectId: string,
+  bandStructureId: string
+): Promise<void> {
+  return invoke<void>("delete_band_structure", { projectId, bandStructureId });
+}
+
+export async function updateBandStructureLabels(
+  projectId: string,
+  bandStructureId: string,
+  labels: Record<string, string>
+): Promise<void> {
+  const labelsJson = JSON.stringify(labels);
+  return invoke<void>("update_band_structure_labels", {
+    projectId,
+    bandStructureId,
+    labelsJson,
+  });
+}
+
+export async function loadBandStructureLabels(
+  projectId: string,
+  bandStructureId: string
+): Promise<Record<string, string> | null> {
+  const json = await invoke<string | null>("load_band_structure_labels", {
+    projectId,
+    bandStructureId,
+  });
+  if (json) {
+    return JSON.parse(json) as Record<string, string>;
+  }
+  return null;
+}
+
+export async function updateBandStructureAtomNames(
+  projectId: string,
+  bandStructureId: string,
+  atomNames: Record<number, string>
+): Promise<void> {
+  const atomNamesJson = JSON.stringify(atomNames);
+  return invoke<void>("update_band_structure_atom_names", {
+    projectId,
+    bandStructureId,
+    atomNamesJson,
+  });
+}
+
+export async function loadBandStructureAtomNames(
+  projectId: string,
+  bandStructureId: string
+): Promise<Record<number, string> | null> {
+  const json = await invoke<string | null>("load_band_structure_atom_names", {
+    projectId,
+    bandStructureId,
+  });
+  if (json) {
+    return JSON.parse(json) as Record<number, string>;
+  }
+  return null;
+}
+
 export function formatRelativeTime(isoString: string): string {
   const date = new Date(isoString);
   const now = new Date();

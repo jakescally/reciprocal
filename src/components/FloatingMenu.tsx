@@ -291,30 +291,41 @@ export function FloatingMenu({ currentProject, onDeleteProject }: FloatingMenuPr
           <div className="px-2 py-2">
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
               Gradients
+              <span className="ml-2 text-[10px] text-gray-400 normal-case">(coming soon)</span>
             </h4>
             <div className="grid grid-cols-3 gap-2">
               {gradientThemes.map((theme) => {
                 const index = THEME_PRESETS.indexOf(theme);
+                const isDisabled = true; // All gradient themes disabled for now
                 return (
                   <button
                     key={theme.name}
-                    onClick={() => setPendingTheme(index)}
+                    onClick={() => !isDisabled && setPendingTheme(index)}
+                    disabled={isDisabled}
                     className={cn(
                       "aspect-square rounded-xl transition-all duration-200",
-                      "hover:scale-110 hover:z-10 active:scale-95",
                       "border-2 relative overflow-hidden",
-                      pendingTheme === index
+                      isDisabled
+                        ? "opacity-40 grayscale cursor-not-allowed"
+                        : "hover:scale-110 hover:z-10 active:scale-95",
+                      pendingTheme === index && !isDisabled
                         ? "border-primary shadow-md"
-                        : "border-transparent hover:border-white/50"
+                        : "border-transparent"
                     )}
                     style={{ background: theme.background }}
-                    title={theme.name}
+                    title={isDisabled ? `${theme.name} (coming soon)` : theme.name}
                   >
                     {/* Accent color indicator */}
                     <div
                       className="absolute bottom-1 right-1 w-3 h-3 rounded-full border border-white/50"
                       style={{ backgroundColor: theme.accent.hex }}
                     />
+                    {/* Strikethrough overlay for disabled themes */}
+                    {isDisabled && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-full h-0.5 bg-gray-500/60 rotate-45" />
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -331,26 +342,37 @@ export function FloatingMenu({ currentProject, onDeleteProject }: FloatingMenuPr
             <div className="grid grid-cols-4 gap-2">
               {solidThemes.map((theme) => {
                 const index = THEME_PRESETS.indexOf(theme);
+                const isDisabled = index !== 0; // Only Classic (index 0) is enabled
                 return (
                   <button
                     key={theme.name}
-                    onClick={() => setPendingTheme(index)}
+                    onClick={() => !isDisabled && setPendingTheme(index)}
+                    disabled={isDisabled}
                     className={cn(
                       "aspect-square rounded-xl transition-all duration-200",
-                      "hover:scale-110 hover:z-10 active:scale-95",
                       "border-2 relative overflow-hidden",
-                      pendingTheme === index
+                      isDisabled
+                        ? "opacity-40 grayscale cursor-not-allowed"
+                        : "hover:scale-110 hover:z-10 active:scale-95",
+                      pendingTheme === index && !isDisabled
                         ? "border-primary shadow-md"
-                        : "border-transparent hover:border-white/50"
+                        : "border-transparent",
+                      !isDisabled && pendingTheme !== index && "hover:border-white/50"
                     )}
                     style={{ backgroundColor: theme.background }}
-                    title={theme.name}
+                    title={isDisabled ? `${theme.name} (coming soon)` : theme.name}
                   >
                     {/* Accent color indicator */}
                     <div
                       className="absolute bottom-1 right-1 w-3 h-3 rounded-full border border-white/50"
                       style={{ backgroundColor: theme.accent.hex }}
                     />
+                    {/* Strikethrough overlay for disabled themes */}
+                    {isDisabled && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-full h-0.5 bg-gray-500/60 rotate-45" />
+                      </div>
+                    )}
                   </button>
                 );
               })}

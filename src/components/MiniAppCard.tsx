@@ -36,11 +36,16 @@ export function MiniAppCard({
             {icon}
           </div>
         </div>
-        {!hasData && (
-          <span className="text-xs text-gray-400 bg-gray-200/50 px-2 py-1 rounded-full">
-            No data
-          </span>
-        )}
+        <span
+          className={cn(
+            "text-xs px-2 py-1 rounded-full",
+            hasData
+              ? "text-green-600 bg-green-100/50"
+              : "text-gray-400 bg-gray-200/50"
+          )}
+        >
+          {hasData ? "Ready" : "No data"}
+        </span>
       </div>
 
       <div className="flex-1">
@@ -54,12 +59,6 @@ export function MiniAppCard({
         </h3>
         <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
       </div>
-
-      {!hasData && (
-        <div className="mt-2 text-xs text-primary/70 font-medium">
-          Tap to add data
-        </div>
-      )}
     </div>
   );
 }

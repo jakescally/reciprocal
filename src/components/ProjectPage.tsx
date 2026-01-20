@@ -3,6 +3,7 @@ import {
   Project,
   CrystalData,
   loadCrystalData,
+  listBandStructures,
   formatRelativeTime,
 } from "../lib/projects";
 import { cn } from "../lib/utils";
@@ -17,16 +18,26 @@ interface ProjectPageProps {
   project: Project;
   onProjectUpdate: (project: Project) => void;
   onEditProject: () => void;
+  onOpenMiniApp: (miniAppId: string) => void;
 }
 
-export function ProjectPage({ project, onProjectUpdate, onEditProject }: ProjectPageProps) {
+export function ProjectPage({ project, onProjectUpdate, onEditProject, onOpenMiniApp }: ProjectPageProps) {
   const [crystalData, setCrystalData] = useState<CrystalData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasBandStructures, setHasBandStructures] = useState(false);
 
-  // Load crystal data on mount or when project changes
+  // Load crystal data and check for band structures on mount or when project changes
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
+
+      // Check if band structures exist
+      try {
+        const bandStructures = await listBandStructures(project.id);
+        setHasBandStructures(bandStructures.length > 0);
+      } catch {
+        setHasBandStructures(false);
+      }
       try {
         if (project.has_cif) {
           const data = await loadCrystalData(project.id);
@@ -49,6 +60,26 @@ export function ProjectPage({ project, onProjectUpdate, onEditProject }: Project
   };
 
   const miniApps = [
+    {
+      id: "brillouin-zone",
+      name: "Brillouin Zone",
+      description: "3D Brillouin zone with high-symmetry k-path",
+      icon: (
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+          />
+        </svg>
+      ),
+    },
     {
       id: "band-structure",
       name: "Band Structure",
@@ -456,10 +487,12 @@ export function ProjectPage({ project, onProjectUpdate, onEditProject }: Project
                   name={app.name}
                   description={app.description}
                   icon={app.icon}
-                  hasData={false}
-                  onClick={() => {
-                    console.log(`Opening ${app.id}`);
-                  }}
+                  hasData={
+                    app.id === "band-structure" ? hasBandStructures :
+                    app.id === "brillouin-zone" ? (project.has_cif && crystalData?.space_group_IT_number !== undefined) :
+                    false
+                  }
+                  onClick={() => onOpenMiniApp(app.id)}
                 />
               ))}
             </div>
