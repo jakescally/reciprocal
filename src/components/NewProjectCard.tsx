@@ -17,7 +17,11 @@ interface SelectedElement {
 
 interface NewProjectCardProps {
   onClose: () => void;
-  onCreate: (name: string, formula: string) => void;
+  onCreate?: (name: string, formula: string) => void;
+  onSave?: (name: string, formula: string) => void;
+  mode?: "create" | "edit";
+  initialName?: string;
+  initialFormula?: string;
 }
 
 // Parse formula string into selected elements
@@ -72,14 +76,34 @@ function toDisplayFormula(selected: SelectedElement[]): string {
     .join("");
 }
 
-export function NewProjectCard({ onClose, onCreate }: NewProjectCardProps) {
-  const [projectName, setProjectName] = useState("");
+export function NewProjectCard({
+  onClose,
+  onCreate,
+  onSave,
+  mode = "create",
+  initialName = "",
+  initialFormula = "",
+}: NewProjectCardProps) {
+  const [projectName, setProjectName] = useState(initialName);
   const [formulaInput, setFormulaInput] = useState("");
   const [selectedElements, setSelectedElements] = useState<SelectedElement[]>(
     []
   );
   const [isUpdatingFromInput, setIsUpdatingFromInput] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<ElementCategory | null>(null);
+  const [initialized, setInitialized] = useState(false);
+
+  // Initialize from props on first render
+  useEffect(() => {
+    if (!initialized && initialFormula) {
+      // Strip HTML tags from formula for parsing (convert subscript tags to numbers)
+      const plainFormula = initialFormula.replace(/<sub>/g, "").replace(/<\/sub>/g, "");
+      setFormulaInput(plainFormula);
+      const parsed = parseFormula(plainFormula);
+      setSelectedElements(parsed);
+      setInitialized(true);
+    }
+  }, [initialFormula, initialized]);
 
   // Sync from formula input to selected elements
   useEffect(() => {
@@ -162,10 +186,15 @@ export function NewProjectCard({ onClose, onCreate }: NewProjectCardProps) {
     [selectedElements]
   );
 
-  // Handle create
-  const handleCreate = () => {
+  // Handle create/save
+  const handleSubmit = () => {
     if (projectName.trim() && selectedElements.length > 0) {
-      onCreate(projectName.trim(), toDisplayFormula(selectedElements));
+      const formula = toDisplayFormula(selectedElements);
+      if (mode === "edit" && onSave) {
+        onSave(projectName.trim(), formula);
+      } else if (onCreate) {
+        onCreate(projectName.trim(), formula);
+      }
     }
   };
 
@@ -180,7 +209,7 @@ export function NewProjectCard({ onClose, onCreate }: NewProjectCardProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800 font-kadwa">
-          New Project
+          {mode === "edit" ? "Edit Project" : "New Project"}
         </h2>
         <button
           onClick={onClose}
@@ -455,9 +484,9 @@ export function NewProjectCard({ onClose, onCreate }: NewProjectCardProps) {
       </div>
       </div>
 
-      {/* Floating Create Button */}
+      {/* Floating Submit Button */}
       <button
-        onClick={handleCreate}
+        onClick={handleSubmit}
         disabled={!projectName.trim() || selectedElements.length === 0}
         className={cn(
           "absolute bottom-6 right-6 px-6 py-3 rounded-xl font-medium transition-all shadow-lg",
@@ -466,7 +495,7 @@ export function NewProjectCard({ onClose, onCreate }: NewProjectCardProps) {
             : "bg-gray-400/70 text-gray-600 cursor-not-allowed"
         )}
       >
-        Create Project
+        {mode === "edit" ? "Save Changes" : "Create Project"}
       </button>
     </div>
   );

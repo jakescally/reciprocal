@@ -5,6 +5,7 @@ import {
   loadCrystalData,
   formatRelativeTime,
 } from "../lib/projects";
+import { cn } from "../lib/utils";
 import { formatWithUncertainty } from "../lib/cifParser";
 import { MiniAppCard } from "./MiniAppCard";
 import { CIFUploadZone } from "./CIFUploadZone";
@@ -15,9 +16,10 @@ import { UnitCellViewer } from "./UnitCellViewer";
 interface ProjectPageProps {
   project: Project;
   onProjectUpdate: (project: Project) => void;
+  onEditProject: () => void;
 }
 
-export function ProjectPage({ project, onProjectUpdate }: ProjectPageProps) {
+export function ProjectPage({ project, onProjectUpdate, onEditProject }: ProjectPageProps) {
   const [crystalData, setCrystalData] = useState<CrystalData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -98,13 +100,62 @@ export function ProjectPage({ project, onProjectUpdate }: ProjectPageProps) {
             <div className="flex gap-12">
               {/* Left Side - Project Info */}
               <div className="flex-1 min-w-0">
-                <h1 className="text-4xl font-bold text-gray-800 font-kadwa mb-2">
-                  {project.name}
-                </h1>
-                <p
-                  className="text-2xl text-gray-600 mb-6"
-                  dangerouslySetInnerHTML={{ __html: project.formula }}
-                />
+                {/* Project Name with edit icon */}
+                <div
+                  onClick={onEditProject}
+                  className={cn(
+                    "group cursor-pointer inline-flex items-center gap-3",
+                    "hover:bg-white/30 rounded-lg px-2 py-1 -mx-2",
+                    "transition-colors duration-200 mb-2"
+                  )}
+                  title="Click to edit"
+                >
+                  <h1 className="text-4xl font-bold text-gray-800 font-kadwa">
+                    {project.name}
+                  </h1>
+                  <svg
+                    className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                </div>
+
+                {/* Formula with edit icon */}
+                <div
+                  onClick={onEditProject}
+                  className={cn(
+                    "group cursor-pointer inline-flex items-center gap-3",
+                    "hover:bg-white/30 rounded-lg px-2 py-1 -mx-2",
+                    "transition-colors duration-200 mb-6"
+                  )}
+                  title="Click to edit"
+                >
+                  <p
+                    className="text-2xl text-gray-600"
+                    dangerouslySetInnerHTML={{ __html: project.formula }}
+                  />
+                  <svg
+                    className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                </div>
 
                 <div className="text-sm text-gray-500 mb-8">
                   Created {formatRelativeTime(project.created_at)} · Last

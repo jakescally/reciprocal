@@ -11,6 +11,8 @@ import {
   Project,
   loadProjects,
   createProject,
+  updateProject,
+  deleteProject,
   formatRelativeTime,
 } from "./lib/projects";
 
@@ -30,6 +32,8 @@ function App() {
   const [peekNewProject, setPeekNewProject] = useState(false);
   const [newProjectKey, setNewProjectKey] = useState(0);
   const [newlyCreatedId, setNewlyCreatedId] = useState<string | null>(null);
+  const [showEditProject, setShowEditProject] = useState(false);
+  const [editProjectKey, setEditProjectKey] = useState(0);
 
   useEffect(() => {
     loadProjects()
@@ -95,6 +99,48 @@ function App() {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (currentView.type !== "project") return;
+
+    const projectId = currentView.project.id;
+    try {
+      await deleteProject(projectId);
+      // Remove from projects array
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+      // Navigate back to dashboard
+      handleBackToDashboard();
+    } catch (err) {
+      console.error("Failed to delete project:", err);
+      setError(String(err));
+    }
+  };
+
+  const handleOpenEditProject = () => {
+    setShowEditProject(true);
+  };
+
+  const handleCloseEditProject = () => {
+    setShowEditProject(false);
+    setEditProjectKey((k) => k + 1);
+  };
+
+  const handleSaveProject = async (name: string, formula: string) => {
+    if (currentView.type !== "project") return;
+
+    try {
+      const updatedProject = await updateProject({
+        ...currentView.project,
+        name,
+        formula,
+      });
+      handleProjectUpdate(updatedProject);
+      handleCloseEditProject();
+    } catch (err) {
+      console.error("Failed to update project:", err);
+      setError(String(err));
+    }
+  };
+
   const tools = [
     {
       name: "Brillouin Zone Viewer",
@@ -152,7 +198,10 @@ function App() {
     <div className="h-screen w-full overflow-hidden relative">
       {/* Static Navigation - unaffected by page transitions */}
       <FloatingLogo />
-      <FloatingMenu />
+      <FloatingMenu
+        currentProject={currentProject}
+        onDeleteProject={handleDeleteProject}
+      />
 
       {/* Back Button - only shown on project page */}
       {showBackButton && (
@@ -304,7 +353,51 @@ function App() {
             !projectEntering && !projectExiting && "opacity-100 scale-100"
           )}
         >
-          <ProjectPage project={currentProject} onProjectUpdate={handleProjectUpdate} />
+          <ProjectPage
+            project={currentProject}
+            onProjectUpdate={handleProjectUpdate}
+            onEditProject={handleOpenEditProject}
+          />
+        </div>
+      )}
+
+      {/* Edit Project Overlay */}
+      {currentProject && (
+        <div
+          className={cn(
+            "fixed inset-0 z-50 flex items-end justify-center transition-all duration-300",
+            showEditProject
+              ? "pointer-events-auto"
+              : "pointer-events-none"
+          )}
+        >
+          {/* Dimmed backdrop */}
+          <div
+            className={cn(
+              "absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300",
+              showEditProject ? "opacity-100" : "opacity-0"
+            )}
+            onClick={handleCloseEditProject}
+          />
+
+          {/* Card container with slide-up animation */}
+          <div
+            className={cn(
+              "relative mb-8 transition-transform duration-300 ease-out",
+              showEditProject
+                ? "translate-y-0"
+                : "translate-y-[calc(100%+2rem)]"
+            )}
+          >
+            <NewProjectCard
+              key={editProjectKey}
+              mode="edit"
+              initialName={currentProject.name}
+              initialFormula={currentProject.formula}
+              onClose={handleCloseEditProject}
+              onSave={handleSaveProject}
+            />
+          </div>
         </div>
       )}
     </div>

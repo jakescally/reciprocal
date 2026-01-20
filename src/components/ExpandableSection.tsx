@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "../lib/utils";
 
 interface ExpandableSectionProps {
   title: string;
@@ -16,17 +17,18 @@ export function ExpandableSection({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="glass rounded-2xl overflow-hidden">
+    <div className="glass rounded-2xl">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-white/30 transition-colors"
+        className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-white/30 transition-colors rounded-t-2xl"
       >
         <div className="flex items-center gap-3">
           {/* Chevron */}
           <svg
-            className={`w-5 h-5 text-gray-500 transition-transform ${
-              isExpanded ? "rotate-90" : ""
-            }`}
+            className={cn(
+              "w-5 h-5 text-gray-500 transition-transform duration-300 ease-out",
+              isExpanded && "rotate-90"
+            )}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -46,7 +48,18 @@ export function ExpandableSection({
           )}
         </div>
       </button>
-      {isExpanded && <div className="px-6 pb-4">{children}</div>}
+      {/* Animated content container using CSS grid for smooth height transition */}
+      <div
+        className={cn(
+          "grid transition-all duration-300 ease-out",
+          isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <div className="overflow-hidden">
+          {/* Padding with extra top space to prevent shadow clipping on nested glass elements */}
+          <div className="px-8 pt-6 pb-6">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
