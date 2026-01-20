@@ -2,6 +2,7 @@ import { useRef, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { CrystalData } from "../lib/projects";
+import { expandAtomSites } from "../lib/symmetry";
 
 // Element colors based on CPK coloring convention
 const ELEMENT_COLORS: Record<string, string> = {
@@ -120,6 +121,7 @@ function getElementColor(symbol: string): string {
 }
 
 // Convert lattice parameters to Cartesian basis vectors
+// Convention: a along X, b in XY plane (vertical component), c general
 function latticeToCartesian(
   a: number,
   b: number,
@@ -245,6 +247,11 @@ function Scene({ crystalData }: { crystalData: CrystalData }) {
     ];
   }, [aVec, bVec, cVec]);
 
+  // Expand atom sites using symmetry operations
+  const expandedAtoms = useMemo(() => {
+    return expandAtomSites(crystalData.atom_sites, crystalData.symmetry_operations);
+  }, [crystalData.atom_sites, crystalData.symmetry_operations]);
+
   // Auto-rotation - sync both groups
   useFrame((_, delta) => {
     if (mainGroupRef.current) {
@@ -255,13 +262,13 @@ function Scene({ crystalData }: { crystalData: CrystalData }) {
     }
   });
 
-  const scale = 3 / maxDim;
-  const axisLength = 0.4;
+  const scale = 4 / maxDim; // Scale to ~80% of viewer
+  const axisLength = 0.7;
 
   return (
     <>
-      {/* Main unit cell */}
-      <group ref={mainGroupRef} scale={[scale, scale, scale]} position={[0, 0, 0]}>
+      {/* Main unit cell - shifted slightly left to visually center with axis indicator */}
+      <group ref={mainGroupRef} scale={[scale, scale, scale]} position={[-0.3, 0, 0]}>
         <group position={[-center.x, -center.y, -center.z]}>
           {/* Unit cell wireframe */}
           {wireframePoints.map((edge, i) => (
@@ -286,8 +293,8 @@ function Scene({ crystalData }: { crystalData: CrystalData }) {
             </line>
           ))}
 
-          {/* Atoms */}
-          {crystalData.atom_sites.map((atom, i) => {
+          {/* Atoms - expanded using symmetry operations */}
+          {expandedAtoms.map((atom, i) => {
             const pos = fractToCartesian(
               atom.fract_x,
               atom.fract_y,
@@ -297,7 +304,7 @@ function Scene({ crystalData }: { crystalData: CrystalData }) {
               cVec
             );
             const color = getElementColor(atom.type_symbol);
-            const radius = maxDim * 0.08;
+            const radius = maxDim * 0.04;
 
             return (
               <mesh key={`atom-${i}`} position={[pos.x, pos.y, pos.z]}>
@@ -310,7 +317,7 @@ function Scene({ crystalData }: { crystalData: CrystalData }) {
       </group>
 
       {/* Axis indicator in bottom-left */}
-      <group position={[-2.2, -1.6, 0]}>
+      <group position={[-2.5, -2.0, 0]}>
         <group ref={axisGroupRef}>
           {/* A axis - red */}
           <arrowHelper
@@ -319,8 +326,8 @@ function Scene({ crystalData }: { crystalData: CrystalData }) {
               new THREE.Vector3(0, 0, 0),
               axisLength,
               0xff4444,
-              0.1,
-              0.06,
+              0.15,
+              0.08,
             ]}
           />
           {/* B axis - green */}
@@ -330,8 +337,8 @@ function Scene({ crystalData }: { crystalData: CrystalData }) {
               new THREE.Vector3(0, 0, 0),
               axisLength,
               0x44ff44,
-              0.1,
-              0.06,
+              0.15,
+              0.08,
             ]}
           />
           {/* C axis - blue */}
@@ -341,8 +348,8 @@ function Scene({ crystalData }: { crystalData: CrystalData }) {
               new THREE.Vector3(0, 0, 0),
               axisLength,
               0x4444ff,
-              0.1,
-              0.06,
+              0.15,
+              0.08,
             ]}
           />
         </group>
@@ -394,7 +401,7 @@ function AxisLabels({
   useFrame(() => {
     if (groupRef.current) {
       const rotation = groupRef.current.rotation.clone();
-      const labelOffset = axisLength + 0.12;
+      const labelOffset = axisLength + 0.18;
 
       if (aLabelRef.current) {
         const pos = aDir.clone().multiplyScalar(labelOffset).applyEuler(rotation);
@@ -413,13 +420,13 @@ function AxisLabels({
 
   return (
     <>
-      <sprite ref={aLabelRef} scale={[0.15, 0.15, 1]}>
+      <sprite ref={aLabelRef} scale={[0.22, 0.22, 1]}>
         <spriteMaterial map={aTexture} transparent />
       </sprite>
-      <sprite ref={bLabelRef} scale={[0.15, 0.15, 1]}>
+      <sprite ref={bLabelRef} scale={[0.22, 0.22, 1]}>
         <spriteMaterial map={bTexture} transparent />
       </sprite>
-      <sprite ref={cLabelRef} scale={[0.15, 0.15, 1]}>
+      <sprite ref={cLabelRef} scale={[0.22, 0.22, 1]}>
         <spriteMaterial map={cTexture} transparent />
       </sprite>
     </>
