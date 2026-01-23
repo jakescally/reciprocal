@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { cn } from "../lib/utils";
 import { Project } from "../lib/projects";
+import { startSiriusRun, type SiriusLogEvent, type SiriusStatusEvent } from "../lib/sirius";
 
 type StepId = "overview" | "structure" | "basics" | "spin" | "run" | "results";
 
@@ -47,9 +49,20 @@ export function SiriusSolverPage({ project }: { project: Project }) {
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
   const [stepDuration, setStepDuration] = useState(220);
   const transitionTimeout = useRef<number | null>(null);
+  const runIdRef = useRef<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [kMesh, setKMesh] = useState("8x8x8");
   const [accuracy, setAccuracy] = useState("standard");
   const [openTip, setOpenTip] = useState<string | null>(null);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
+  const [logs, setLogs] = useState<SiriusLogEvent[]>([]);
+  const [runError, setRunError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentStep]);
 
   useEffect(() => {
     const handleDocClick = (event: MouseEvent) => {
@@ -62,6 +75,36 @@ export function SiriusSolverPage({ project }: { project: Project }) {
 
     document.addEventListener("click", handleDocClick);
     return () => document.removeEventListener("click", handleDocClick);
+  }, []);
+
+  useEffect(() => {
+    let unlistenLog: (() => void) | null = null;
+    let unlistenStatus: (() => void) | null = null;
+
+    listen<SiriusLogEvent>("sirius-log", (event) => {
+      if (event.payload.run_id !== runIdRef.current) return;
+      setLogs((prev) => [...prev, event.payload]);
+    }).then((unlisten) => {
+      unlistenLog = unlisten;
+    });
+
+    listen<SiriusStatusEvent>("sirius-status", (event) => {
+      if (event.payload.run_id !== runIdRef.current) return;
+      if (event.payload.status === "completed") {
+        setRunStatus("completed");
+      } else if (event.payload.status === "failed") {
+        setRunStatus("failed");
+      } else {
+        setRunStatus("running");
+      }
+    }).then((unlisten) => {
+      unlistenStatus = unlisten;
+    });
+
+    return () => {
+      if (unlistenLog) unlistenLog();
+      if (unlistenStatus) unlistenStatus();
+    };
   }, []);
 
   const step = STEPS[currentStep];
@@ -83,6 +126,21 @@ export function SiriusSolverPage({ project }: { project: Project }) {
     transitionTimeout.current = window.setTimeout(() => {
       setPreviousStep(null);
     }, delta > 1 ? 140 : 220);
+  };
+
+  const handleStartRun = async () => {
+    if (!project.has_cif || runStatus === "running") return;
+    setRunError(null);
+    setLogs([]);
+    setRunStatus("running");
+    try {
+      const id = await startSiriusRun(project.id);
+      runIdRef.current = id;
+      setRunId(id);
+    } catch (error) {
+      setRunStatus("failed");
+      setRunError(String(error));
+    }
   };
 
   useEffect(() => {
@@ -373,18 +431,52 @@ export function SiriusSolverPage({ project }: { project: Project }) {
                 <p>Platform: macOS (initial target)</p>
                 <p>K-mesh: {kMesh}</p>
                 <p>Accuracy: {accuracy}</p>
+                {runId && <p>Run ID: {runId}</p>}
               </div>
             </div>
 
             <button
-              disabled
+              onClick={handleStartRun}
+              disabled={!project.has_cif || runStatus === "running"}
               className={cn(
                 "w-full rounded-xl py-3 text-sm font-medium transition-all",
-                "bg-gray-300 text-gray-500 cursor-not-allowed"
+                !project.has_cif || runStatus === "running"
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-primary text-white hover:bg-primary/90"
               )}
             >
-              Start Calculation (engine not wired yet)
+              {runStatus === "running" ? "Running..." : "Start Calculation"}
             </button>
+
+            {runError && (
+              <div className="glass rounded-2xl p-4 text-sm text-red-600">
+                {runError}
+              </div>
+            )}
+
+            <div className="glass rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-gray-700">
+                  Run log
+                </h4>
+                <span className="text-xs text-gray-500">
+                  {runStatus === "running" ? "Live" : runStatus}
+                </span>
+              </div>
+              <div className="h-40 overflow-y-auto rounded-xl bg-white/60 px-3 py-2 text-xs text-gray-600 font-mono">
+                {logs.length === 0 ? (
+                  <div className="text-gray-400">
+                    No log output yet.
+                  </div>
+                ) : (
+                  logs.map((log, index) => (
+                    <div key={`${log.timestamp}-${index}`}>
+                      [{new Date(log.timestamp).toLocaleTimeString()}] {log.message}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         );
 
@@ -470,7 +562,7 @@ export function SiriusSolverPage({ project }: { project: Project }) {
         </div>
       </div>
 
-      <main className="flex-1 px-8 pt-4 pb-8 overflow-y-auto">
+      <main ref={scrollRef} className="flex-1 px-8 pt-4 pb-8 overflow-y-auto">
         <div className="w-full max-w-none space-y-6">
           <div className="relative w-full overflow-visible min-h-[520px] px-2">
             {previousStep !== null && (

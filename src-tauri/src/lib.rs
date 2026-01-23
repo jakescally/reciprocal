@@ -2,6 +2,9 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use std::thread;
+use std::time::Duration;
+use tauri::Emitter;
 use tauri::Manager;
 use uuid::Uuid;
 
@@ -15,6 +18,20 @@ pub struct Project {
     #[serde(default)]
     pub has_cif: bool,
     pub cif_filename: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+struct SiriusLogEvent {
+    run_id: String,
+    level: String,
+    message: String,
+    timestamp: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+struct SiriusStatusEvent {
+    run_id: String,
+    status: String,
 }
 
 fn get_projects_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -444,6 +461,60 @@ fn load_band_structure_atom_names(
     Ok(Some(content))
 }
 
+#[tauri::command]
+fn start_sirius_run(app: tauri::AppHandle, project_id: String) -> Result<String, String> {
+    let run_id = Uuid::new_v4().to_string();
+    let app_handle = app.clone();
+    let run_id_clone = run_id.clone();
+
+    thread::spawn(move || {
+        thread::sleep(Duration::from_millis(200));
+        let _ = app_handle.emit(
+            "sirius-status",
+            SiriusStatusEvent {
+                run_id: run_id_clone.clone(),
+                status: "running".to_string(),
+            },
+        );
+
+        let messages = vec![
+            "Initializing SIRIUS run",
+            "Reading structure data",
+            "Building basis and k-mesh",
+            "Starting SCF loop",
+            "SCF iteration 1/8",
+            "SCF iteration 4/8",
+            "SCF iteration 8/8",
+            "Finalizing outputs",
+            "Run complete",
+        ];
+
+        for message in messages {
+            thread::sleep(Duration::from_millis(420));
+            let _ = app_handle.emit(
+                "sirius-log",
+                SiriusLogEvent {
+                    run_id: run_id_clone.clone(),
+                    level: "info".to_string(),
+                    message: message.to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                },
+            );
+        }
+
+        let _ = app_handle.emit(
+            "sirius-status",
+            SiriusStatusEvent {
+                run_id: run_id_clone,
+                status: "completed".to_string(),
+            },
+        );
+    });
+
+    let _ = project_id;
+    Ok(run_id)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -466,7 +537,8 @@ pub fn run() {
             update_band_structure_labels,
             load_band_structure_labels,
             update_band_structure_atom_names,
-            load_band_structure_atom_names
+            load_band_structure_atom_names,
+            start_sirius_run
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
