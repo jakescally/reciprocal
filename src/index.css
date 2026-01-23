@@ -58,6 +58,129 @@
       inset 0 -1px 0 0 rgb(var(--color-primary-rgb) / 0.12);
   }
 
+  .glass-strong {
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.55),
+        rgba(255, 255, 255, 0.35));
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow:
+      0 10px 36px 0 rgb(var(--color-primary-rgb) / 0.18),
+      0 6px 18px 0 rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+  }
+
+  @keyframes bubble-pop {
+    0% {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.86);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .animate-bubble-pop {
+    transform-origin: top right;
+    animation: bubble-pop 180ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  .tooltip-bubble {
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.92),
+        rgba(255, 255, 255, 0.8));
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+      0 12px 32px rgb(var(--color-primary-rgb) / 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  .tooltip-arrow {
+    width: 14px;
+    height: 10px;
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.92),
+        rgba(255, 255, 255, 0.8));
+    clip-path: polygon(50% 0, 0 100%, 100% 100%);
+    filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.08));
+  }
+
+  .wizard-highlight {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgb(var(--color-primary-rgb) / 0.25);
+    box-shadow:
+      0 8px 28px rgb(var(--color-primary-rgb) / 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    transition: left 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      width 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  @keyframes slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(100vw);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slide-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-100vw);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slide-out-left {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-100vw);
+    }
+  }
+
+  @keyframes slide-out-right {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(100vw);
+    }
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right var(--step-duration, 220ms) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  .animate-slide-in-left {
+    animation: slide-in-left var(--step-duration, 220ms) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  .animate-slide-out-left {
+    animation: slide-out-left var(--step-duration, 220ms) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  .animate-slide-out-right {
+    animation: slide-out-right var(--step-duration, 220ms) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
   /* New card bounce animation (hover effect 3 times) */
   @keyframes card-bounce {
 

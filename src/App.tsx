@@ -8,6 +8,7 @@ import { NewProjectCard } from "./components/NewProjectCard";
 import { ProjectPage } from "./components/ProjectPage";
 import { BandStructurePage } from "./components/BandStructurePage";
 import { BrillouinZonePage } from "./components/BrillouinZonePage";
+import { SiriusSolverPage } from "./components/SiriusSolverPage";
 import { cn } from "./lib/utils";
 import {
   Project,
@@ -18,7 +19,7 @@ import {
   formatRelativeTime,
 } from "./lib/projects";
 
-type MiniApp = "band-structure" | "dos" | "brillouin-zone";
+type MiniApp = "band-structure" | "dos" | "brillouin-zone" | "sirius";
 
 type View =
   | { type: "dashboard" }
@@ -203,6 +204,15 @@ function App() {
         </svg>
       ),
     },
+    {
+      name: "SIRIUS FP-LAPW",
+      description: "Run an FP-LAPW ground-state calculation and generate bands/DOS",
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4m6.364.636-2.828 2.828M21 12h-4m-.636 6.364-2.828-2.828M12 21v-4m-6.364-.636 2.828-2.828M3 12h4m.636-6.364 2.828 2.828" />
+        </svg>
+      ),
+    },
   ];
 
   const showDashboard = currentView.type === "dashboard" || currentView.type === "transitioning-to-project" || currentView.type === "transitioning-to-dashboard";
@@ -280,6 +290,7 @@ function App() {
           {currentMiniApp === "band-structure" && "Band Structure"}
           {currentMiniApp === "dos" && "Density of States"}
           {currentMiniApp === "brillouin-zone" && "Brillouin Zone"}
+          {currentMiniApp === "sirius" && "SIRIUS Solver"}
         </h1>
       )}
 
@@ -425,6 +436,9 @@ function App() {
           )}
           {currentMiniApp === "brillouin-zone" && (
             <BrillouinZonePage project={currentProject} />
+          )}
+          {currentMiniApp === "sirius" && (
+            <SiriusSolverPage project={currentProject} />
           )}
         </div>
       )}
