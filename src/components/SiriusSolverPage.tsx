@@ -51,6 +51,7 @@ export function SiriusSolverPage({ project }: { project: Project }) {
   const transitionTimeout = useRef<number | null>(null);
   const runIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
   const [kMesh, setKMesh] = useState("8x8x8");
   const [accuracy, setAccuracy] = useState("standard");
   const [openTip, setOpenTip] = useState<string | null>(null);
@@ -58,11 +59,22 @@ export function SiriusSolverPage({ project }: { project: Project }) {
   const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
   const [logs, setLogs] = useState<SiriusLogEvent[]>([]);
   const [runError, setRunError] = useState<string | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentStep]);
+
+  useEffect(() => {
+    if (!headerRef.current || typeof ResizeObserver === "undefined") return;
+    const element = headerRef.current;
+    const update = () => setHeaderHeight(element.offsetHeight);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const handleDocClick = (event: MouseEvent) => {
@@ -504,65 +516,71 @@ export function SiriusSolverPage({ project }: { project: Project }) {
 
   return (
     <div className="h-screen w-full overflow-hidden flex flex-col">
-      <div className="pt-28 px-8 pb-6">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="glass rounded-3xl p-7">
-            <div className="flex items-start justify-between gap-6">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-800 font-kadwa">
-                  SIRIUS FP-LAPW Wizard
-                </h2>
-                <p className="text-base text-gray-600 mt-2">
-                  Step {currentStep + 1} of {STEPS.length}: {step.title}
-                </p>
+      <div ref={headerRef} className="fixed inset-x-0 top-0 z-40">
+        <div className="pt-28 px-8 pb-6">
+          <div className="max-w-[1200px] mx-auto">
+            <div className="glass rounded-3xl p-7">
+              <div className="flex items-start justify-between gap-6">
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-800 font-kadwa">
+                    SIRIUS FP-LAPW Wizard
+                  </h2>
+                  <p className="text-base text-gray-600 mt-2">
+                    Step {currentStep + 1} of {STEPS.length}: {step.title}
+                  </p>
+                </div>
+                <div className="text-xs text-gray-500">
+                  External engine integration (macOS first)
+                </div>
               </div>
-              <div className="text-xs text-gray-500">
-                External engine integration (macOS first)
-              </div>
-            </div>
 
-            <div className="mt-6">
-              <div
-                className="relative grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2"
-                style={
-                  {
-                    "--steps": STEPS.length,
-                    "--gap": "0.5rem",
-                    "--index": currentStep,
-                  } as CSSProperties
-                }
-              >
+              <div className="mt-6">
                 <div
-                  className="absolute inset-y-0 rounded-xl wizard-highlight"
-                  style={{
-                    width: "calc((100% - (var(--steps) - 1) * var(--gap)) / var(--steps))",
-                    left: "calc(var(--index) * (100% - (var(--steps) - 1) * var(--gap)) / var(--steps) + var(--index) * var(--gap))",
-                  }}
-                />
-              {STEPS.map((item, index) => (
-                <button
-                  key={item.id}
-                  onClick={() => goToStep(index)}
-                  className={cn(
-                    "text-left rounded-xl px-4 py-3 transition-all relative z-10",
-                    index === currentStep
-                      ? "text-primary"
-                      : "bg-white/40 text-gray-600 hover:bg-white/60"
-                  )}
+                  className="relative grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2"
+                  style={
+                    {
+                      "--steps": STEPS.length,
+                      "--gap": "0.5rem",
+                      "--index": currentStep,
+                    } as CSSProperties
+                  }
                 >
-                  <div className="text-sm font-semibold">{item.title}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {item.summary}
-                  </div>
-                </button>
-              ))}
+                  <div
+                    className="absolute inset-y-0 rounded-xl wizard-highlight"
+                    style={{
+                      width: "calc((100% - (var(--steps) - 1) * var(--gap)) / var(--steps))",
+                      left: "calc(var(--index) * (100% - (var(--steps) - 1) * var(--gap)) / var(--steps) + var(--index) * var(--gap))",
+                    }}
+                  />
+                  {STEPS.map((item, index) => (
+                    <button
+                      key={item.id}
+                      onClick={() => goToStep(index)}
+                      className={cn(
+                        "text-left rounded-xl px-4 py-3 transition-all relative z-10",
+                        index === currentStep
+                          ? "text-primary"
+                          : "bg-white/40 text-gray-600 hover:bg-white/60"
+                      )}
+                    >
+                      <div className="text-sm font-semibold">{item.title}</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {item.summary}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <main ref={scrollRef} className="flex-1 px-8 pt-4 pb-8 overflow-y-auto">
+      <main
+        ref={scrollRef}
+        className="flex-1 px-8 pb-8 overflow-y-auto"
+        style={{ paddingTop: headerHeight ? headerHeight + 16 : 220 }}
+      >
         <div className="w-full max-w-none space-y-6">
           <div className="relative w-full overflow-visible min-h-[520px] px-2">
             {previousStep !== null && (

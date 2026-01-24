@@ -240,7 +240,7 @@ export function ProjectPage({ project, onProjectUpdate, onEditProject, onOpenMin
 
                 <div className="text-sm text-gray-500 mb-8">
                   Created {formatRelativeTime(project.created_at)} · Last
-                  modified {formatRelativeTime(project.updated_at)}
+                  opened {formatRelativeTime(project.last_opened_at || project.created_at)}
                 </div>
 
                 {/* Crystal Data Display */}

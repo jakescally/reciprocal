@@ -3,12 +3,12 @@ import { cn } from "../lib/utils";
 interface MaterialCardProps {
   name: string;
   formula: string;
-  lastModified?: string;
+  lastOpened?: string;
   isNew?: boolean;
   onClick?: () => void;
 }
 
-export function MaterialCard({ name, formula, lastModified = "2 days ago", isNew = false, onClick }: MaterialCardProps) {
+export function MaterialCard({ name, formula, lastOpened = "2 days ago", isNew = false, onClick }: MaterialCardProps) {
   return (
     <div
       onClick={onClick}
@@ -30,7 +30,7 @@ export function MaterialCard({ name, formula, lastModified = "2 days ago", isNew
       </div>
       <div className="mt-4">
         <p className="text-sm text-gray-500">
-          Modified {lastModified}
+          Opened {lastOpened}
         </p>
       </div>
     </div>

@@ -37,6 +37,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<View>({ type: "dashboard" });
+  const [projectQuery, setProjectQuery] = useState("");
 
   const [showNewProject, setShowNewProject] = useState(false);
   const [peekNewProject, setPeekNewProject] = useState(false);
@@ -82,6 +83,14 @@ function App() {
     }
   };
 
+  const normalizedQuery = projectQuery.trim().toLowerCase();
+  const filteredProjects = projects.filter((project) => {
+    if (!normalizedQuery) return true;
+    const name = project.name.toLowerCase();
+    const formulaText = project.formula.replace(/<[^>]+>/g, "").toLowerCase();
+    return name.includes(normalizedQuery) || formulaText.includes(normalizedQuery);
+  });
+
   const handleOpenProject = async (project: Project) => {
     setCurrentView({ type: "transitioning-to-project", project });
     setTimeout(() => {
@@ -107,6 +116,7 @@ function App() {
 
   const handleBackToDashboard = () => {
     if (currentView.type === "project") {
+      setProjectQuery("");
       setCurrentView({ type: "transitioning-to-dashboard", project: currentView.project });
       setTimeout(() => {
         setCurrentView({ type: "dashboard" });
@@ -326,9 +336,23 @@ function App() {
           <main className="flex-1 px-8 pt-32 pb-8 overflow-y-auto overflow-x-hidden">
             <div className="max-w-[1600px] mx-auto space-y-12">
               <section>
-                <h2 className="text-3xl font-bold text-gray-800 mb-6 font-kadwa">
-                  Projects
-                </h2>
+                <div className="flex items-center mb-6 gap-6">
+                  <h2 className="text-3xl font-bold text-gray-800 font-kadwa">
+                    Projects
+                  </h2>
+                  <div className="glass rounded-full px-4 py-2 flex items-center gap-2 w-[320px]">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m1.85-5.4a7.25 7.25 0 11-14.5 0 7.25 7.25 0 0114.5 0z" />
+                    </svg>
+                    <input
+                      value={projectQuery}
+                      onChange={(e) => setProjectQuery(e.target.value)}
+                      placeholder="Search projects or formula"
+                      className="bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none w-full"
+                      aria-label="Search projects"
+                    />
+                  </div>
+                </div>
 
                 <div className="flex gap-6 overflow-x-auto hide-scrollbar py-16 px-16 -mx-16 -my-16">
                   <div className="flex-shrink-0">
@@ -347,12 +371,12 @@ function App() {
                       Error: {error}
                     </div>
                   ) : (
-                    projects.map((project) => (
+                    filteredProjects.map((project) => (
                       <div key={project.id} className="flex-shrink-0">
                         <MaterialCard
                           name={project.name}
                           formula={project.formula}
-                          lastModified={formatRelativeTime(project.updated_at)}
+                          lastOpened={formatRelativeTime(project.last_opened_at || project.created_at)}
                           isNew={project.id === newlyCreatedId}
                           onClick={() => handleOpenProject(project)}
                         />
