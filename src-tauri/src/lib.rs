@@ -18,6 +18,8 @@ pub struct Project {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     #[serde(default)]
+    pub last_opened_at: Option<DateTime<Utc>>,
+    #[serde(default)]
     pub has_cif: bool,
     pub cif_filename: Option<String>,
 }
@@ -109,8 +111,12 @@ fn load_projects(app: tauri::AppHandle) -> Result<Vec<Project>, String> {
         }
     }
 
-    // Sort by updated_at descending (most recent first)
-    projects.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    // Sort by last_opened_at descending (most recently opened first), fall back to created_at
+    projects.sort_by(|a, b| {
+        let a_time = a.last_opened_at.unwrap_or(a.created_at);
+        let b_time = b.last_opened_at.unwrap_or(b.created_at);
+        b_time.cmp(&a_time)
+    });
 
     Ok(projects)
 }
@@ -126,6 +132,7 @@ fn create_project(app: tauri::AppHandle, name: String, formula: String) -> Resul
         formula,
         created_at: now,
         updated_at: now,
+        last_opened_at: Some(now),
         has_cif: false,
         cif_filename: None,
     };
@@ -166,6 +173,34 @@ fn update_project(app: tauri::AppHandle, project: Project) -> Result<Project, St
         .map_err(|e| format!("Failed to write project file: {}", e))?;
 
     Ok(updated_project)
+}
+
+#[tauri::command]
+fn mark_project_opened(app: tauri::AppHandle, project_id: String) -> Result<Project, String> {
+    let projects_dir = get_projects_dir(&app)?;
+    let project_dir = projects_dir.join(&project_id);
+    let project_file = project_dir.join("project.json");
+
+    if !project_file.exists() {
+        return Err(format!("Project with id {} not found", project_id));
+    }
+
+    // Read existing project
+    let content = fs::read_to_string(&project_file)
+        .map_err(|e| format!("Failed to read project file: {}", e))?;
+    let mut project: Project = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse project file: {}", e))?;
+
+    // Update last_opened_at
+    project.last_opened_at = Some(Utc::now());
+
+    // Save updated project
+    let updated_content = serde_json::to_string_pretty(&project)
+        .map_err(|e| format!("Failed to serialize project: {}", e))?;
+    fs::write(&project_file, updated_content)
+        .map_err(|e| format!("Failed to write project file: {}", e))?;
+
+    Ok(project)
 }
 
 #[tauri::command]
@@ -812,6 +847,7 @@ pub fn run() {
             load_projects,
             create_project,
             update_project,
+            mark_project_opened,
             delete_project,
             import_cif_file,
             read_cif_file,

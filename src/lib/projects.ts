@@ -79,6 +79,7 @@ export interface Project {
   formula: string;
   created_at: string;
   updated_at: string;
+  last_opened_at?: string;
   has_cif: boolean;
   cif_filename?: string;
 }
@@ -96,6 +97,10 @@ export async function createProject(
 
 export async function updateProject(project: Project): Promise<Project> {
   return invoke<Project>("update_project", { project });
+}
+
+export async function markProjectOpened(projectId: string): Promise<Project> {
+  return invoke<Project>("mark_project_opened", { projectId });
 }
 
 export async function deleteProject(id: string): Promise<void> {

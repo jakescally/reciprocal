@@ -16,6 +16,7 @@ import {
   loadProjects,
   createProject,
   updateProject,
+  markProjectOpened,
   deleteProject,
   formatRelativeTime,
 } from "./lib/projects";
@@ -81,11 +82,27 @@ function App() {
     }
   };
 
-  const handleOpenProject = (project: Project) => {
+  const handleOpenProject = async (project: Project) => {
     setCurrentView({ type: "transitioning-to-project", project });
     setTimeout(() => {
       setCurrentView({ type: "project", project });
     }, 400);
+
+    // Mark project as opened and update in list
+    try {
+      const updatedProject = await markProjectOpened(project.id);
+      setProjects((prev) => {
+        // Update the project and re-sort by last_opened_at
+        const updated = prev.map((p) => (p.id === project.id ? updatedProject : p));
+        return updated.sort((a, b) => {
+          const aTime = a.last_opened_at || a.created_at;
+          const bTime = b.last_opened_at || b.created_at;
+          return new Date(bTime).getTime() - new Date(aTime).getTime();
+        });
+      });
+    } catch (err) {
+      console.error("Failed to mark project as opened:", err);
+    }
   };
 
   const handleBackToDashboard = () => {
