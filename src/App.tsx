@@ -306,14 +306,14 @@ function App() {
             !dashboardExiting && !dashboardEntering && "opacity-100 scale-100"
           )}
         >
-          <main className="flex-1 px-8 pt-32 pb-8 overflow-y-auto">
+          <main className="flex-1 px-8 pt-32 pb-8 overflow-y-auto overflow-x-hidden">
             <div className="max-w-[1600px] mx-auto space-y-12">
               <section>
                 <h2 className="text-3xl font-bold text-gray-800 mb-6 font-kadwa">
                   Projects
                 </h2>
 
-                <div className="flex gap-6 overflow-x-auto py-16 px-16 -mx-16 -my-16">
+                <div className="flex gap-6 overflow-x-auto hide-scrollbar py-16 px-16 -mx-16 -my-16">
                   <div className="flex-shrink-0">
                     <AddMaterialCard
                       onClick={handleOpenNewProject}
@@ -350,7 +350,7 @@ function App() {
                   Analysis Tools
                 </h2>
 
-                <div className="flex gap-6 overflow-x-auto py-16 px-16 -mx-16 -my-16">
+                <div className="flex gap-6 overflow-x-auto hide-scrollbar py-16 px-16 -mx-16 -my-16">
                   {tools.map((tool, index) => (
                     <div key={index} className="flex-shrink-0">
                       <ToolCard
