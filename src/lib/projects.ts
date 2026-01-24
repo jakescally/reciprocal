@@ -258,18 +258,18 @@ export interface FermiSurfaceInfo {
 export async function importFermiSurface(
   projectId: string,
   name: string,
-  klistSourcePath: string,
-  energySourcePath: string,
-  scfSourcePath: string,
+  output1SourcePath: string,
+  output2SourcePath: string,
+  outputkgenSourcePath: string,
   structSourcePath: string,
   caseName: string
 ): Promise<FermiSurfaceInfo> {
   return invoke<FermiSurfaceInfo>("import_fermi_surface", {
     projectId,
     name,
-    klistSourcePath,
-    energySourcePath,
-    scfSourcePath,
+    output1SourcePath,
+    output2SourcePath,
+    outputkgenSourcePath,
     structSourcePath,
     caseName,
   });

@@ -13,13 +13,12 @@ import {
   formatRelativeTime,
 } from "../lib/projects";
 import {
-  parseWien2kFermiData,
-  findFermiCrossingBands,
-  FermiSurfaceRawData,
+  buildWien2kBandGrid,
+  findFermiCrossingBandsFromGrid,
   extractCaseName,
-} from "../lib/wien2kFermiParser";
-import { expandToFullBZ } from "../lib/kpointSymmetry";
-import { buildEnergyGrid, shiftToFermiLevel, EnergyGrid } from "../lib/gridInterpolation";
+  Wien2kBandGrid,
+} from "../lib/wien2kFermiGrid";
+import { shiftToFermiLevel, EnergyGrid } from "../lib/gridInterpolation";
 import { marchingCubes, IsosurfaceMesh } from "../lib/marchingCubes";
 
 interface FermiSurfacePageProps {
@@ -160,7 +159,7 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
   // State for Fermi surface data
   const [fermiSurfaces, setFermiSurfaces] = useState<FermiSurfaceInfo[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [rawData, setRawData] = useState<FermiSurfaceRawData | null>(null);
+  const [rawData, setRawData] = useState<Wien2kBandGrid | null>(null);
   const [energyGrid, setEnergyGrid] = useState<EnergyGrid | null>(null);
   const [crossingBands, setCrossingBands] = useState<number[]>([]);
   const [enabledBands, setEnabledBands] = useState<Set<number>>(new Set());
@@ -171,13 +170,12 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
   const [error, setError] = useState<string | null>(null);
   const [showBZ, setShowBZ] = useState(true);
   const [showImportPanel, setShowImportPanel] = useState(false);
-  const [gridSize, setGridSize] = useState(32);
 
   // Import file state
   const [importFiles, setImportFiles] = useState<{
-    klist?: string;
-    energy?: string;
-    scf?: string;
+    output1?: string;
+    output2?: string;
+    outputkgen?: string;
     struct?: string;
     caseName?: string;
   }>({});
@@ -214,32 +212,27 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
       setError(null);
 
       try {
-        const [klist, energy, scf, struct] = await loadFermiSurfaceFiles(project.id, selectedId);
+        const [output1, output2, outputkgen, _struct] = await loadFermiSurfaceFiles(project.id, selectedId);
         const surface = fermiSurfaces.find(s => s.id === selectedId);
 
-        // Parse Wien2k files
-        const data = parseWien2kFermiData(
-          klist, energy, scf, struct,
-          surface?.case_name || "unknown",
-          true // isSOC
+        // Parse Wien2k files using Xcrysden-style bandgrid construction
+        const data = buildWien2kBandGrid(
+          output1,
+          output2,
+          outputkgen,
+          surface?.case_name || "unknown"
         );
         setRawData(data);
 
         // Find bands crossing Fermi level
-        const crossing = findFermiCrossingBands(data);
+        const crossing = findFermiCrossingBandsFromGrid(
+          data.energiesByKPoint,
+          data.grid.fermiEnergy
+        );
         setCrossingBands(crossing);
         setEnabledBands(new Set(crossing.slice(0, 4))); // Enable first 4 by default
 
-        // Expand k-points and build grid
-        const expanded = expandToFullBZ(data.kPoints, data.symmetryOps);
-        const grid = buildEnergyGrid(
-          expanded,
-          gridSize,
-          crossing,
-          data.fermiEnergy,
-          data.gridSize
-        );
-        const shiftedGrid = shiftToFermiLevel(grid);
+        const shiftedGrid = shiftToFermiLevel(data.grid);
         setEnergyGrid(shiftedGrid);
       } catch (err) {
         console.error("Failed to process Fermi surface:", err);
@@ -250,7 +243,7 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
     };
 
     loadData();
-  }, [selectedId, project.id, fermiSurfaces, gridSize]);
+  }, [selectedId, project.id, fermiSurfaces]);
 
   // Generate meshes for enabled bands
   const meshes = useMemo(() => {
@@ -259,11 +252,9 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
     const result: Array<{ mesh: IsosurfaceMesh; color: string; bandIndex: number }> = [];
 
     Array.from(enabledBands).forEach((bandIndex, i) => {
-      // Find the array index for this band
-      const arrayIndex = crossingBands.indexOf(bandIndex);
-      if (arrayIndex < 0) return;
+      if (bandIndex < 0 || bandIndex >= energyGrid.data.length) return;
 
-      const mesh = marchingCubes(energyGrid, 0, arrayIndex);
+      const mesh = marchingCubes(energyGrid, 0, bandIndex);
       if (mesh.vertexCount > 0) {
         result.push({
           mesh,
@@ -274,14 +265,14 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
     });
 
     return result;
-  }, [energyGrid, enabledBands, crossingBands]);
+  }, [energyGrid, enabledBands]);
 
   // Handle file selection for import
-  const selectFile = async (type: 'klist' | 'energy' | 'scf' | 'struct') => {
+  const selectFile = async (type: 'output1' | 'output2' | 'outputkgen' | 'struct') => {
     const extensions: Record<string, string[]> = {
-      klist: ['klist'],
-      energy: ['energyso', 'energy', 'energyup', 'energydn', 'energysodn', 'energysoup'],
-      scf: ['scf', 'scf0', 'scf1', 'scf2', 'scfso'],
+      output1: ['output1'],
+      output2: ['output2'],
+      outputkgen: ['outputkgen'],
       struct: ['struct'],
     };
 
@@ -312,7 +303,7 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
 
   // Handle import
   const handleImport = async () => {
-    if (!importFiles.klist || !importFiles.energy || !importFiles.scf || !importFiles.struct) {
+    if (!importFiles.output1 || !importFiles.output2 || !importFiles.outputkgen || !importFiles.struct) {
       return;
     }
 
@@ -321,9 +312,9 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
       const info = await importFermiSurface(
         project.id,
         importName || importFiles.caseName || "Fermi Surface",
-        importFiles.klist,
-        importFiles.energy,
-        importFiles.scf,
+        importFiles.output1,
+        importFiles.output2,
+        importFiles.outputkgen,
         importFiles.struct,
         importFiles.caseName || "unknown"
       );
@@ -452,10 +443,10 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
               </div>
 
               {/* File selectors */}
-              {(['klist', 'energy', 'scf', 'struct'] as const).map((type) => (
+              {(['output1', 'output2', 'outputkgen', 'struct'] as const).map((type) => (
                 <div key={type}>
                   <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">
-                    {type === 'energy' ? 'Energy (energyso)' : type} file
+                    {type} file
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -485,7 +476,7 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
                 </button>
                 <button
                   onClick={handleImport}
-                  disabled={!importFiles.klist || !importFiles.energy || !importFiles.scf || !importFiles.struct || isProcessing}
+                  disabled={!importFiles.output1 || !importFiles.output2 || !importFiles.outputkgen || !importFiles.struct || isProcessing}
                   className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isProcessing ? "Importing..." : "Import"}
@@ -570,7 +561,7 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
             <div className="space-y-2 text-sm">
               <div>
                 <span className="text-gray-500">Fermi Energy:</span>{" "}
-                <span className="text-gray-800 font-medium">{rawData.fermiEnergy.toFixed(3)} eV</span>
+                <span className="text-gray-800 font-medium">{rawData.grid.fermiEnergy.toFixed(3)} eV</span>
               </div>
               <div>
                 <span className="text-gray-500">Total Bands:</span>{" "}
@@ -581,12 +572,14 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
                 <span className="text-gray-800 font-medium">{crossingBands.length}</span>
               </div>
               <div>
-                <span className="text-gray-500">K-points:</span>{" "}
-                <span className="text-gray-800 font-medium">{rawData.kPoints.length} (irreducible)</span>
+                <span className="text-gray-500">Irreducible k-points:</span>{" "}
+                <span className="text-gray-800 font-medium">{rawData.irreducibleKPoints}</span>
               </div>
               <div>
-                <span className="text-gray-500">Symmetry Ops:</span>{" "}
-                <span className="text-gray-800 font-medium">{rawData.symmetryOps.length}</span>
+                <span className="text-gray-500">Grid:</span>{" "}
+                <span className="text-gray-800 font-medium">
+                  {rawData.grid.nx} × {rawData.grid.ny} × {rawData.grid.nz}
+                </span>
               </div>
             </div>
           </div>
@@ -640,16 +633,9 @@ export function FermiSurfacePage({ project }: FermiSurfacePageProps) {
             </label>
             <div>
               <label className="text-sm text-gray-700 block mb-1">Grid Resolution</label>
-              <select
-                value={gridSize}
-                onChange={(e) => setGridSize(parseInt(e.target.value))}
-                className="w-full px-2 py-1 border rounded text-sm"
-              >
-                <option value={16}>Low (16)</option>
-                <option value={32}>Medium (32)</option>
-                <option value={48}>High (48)</option>
-                <option value={64}>Very High (64)</option>
-              </select>
+              <div className="w-full px-2 py-1 border rounded text-sm text-gray-700 bg-white/70">
+                {rawData ? `${rawData.grid.nx} × ${rawData.grid.ny} × ${rawData.grid.nz}` : "—"}
+              </div>
             </div>
           </div>
         </div>

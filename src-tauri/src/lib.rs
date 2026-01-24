@@ -544,9 +544,9 @@ fn import_fermi_surface(
     app: tauri::AppHandle,
     project_id: String,
     name: String,
-    klist_source_path: String,
-    energy_source_path: String,
-    scf_source_path: String,
+    output1_source_path: String,
+    output2_source_path: String,
+    outputkgen_source_path: String,
     struct_source_path: String,
     case_name: String,
 ) -> Result<FermiSurfaceInfo, String> {
@@ -557,20 +557,20 @@ fn import_fermi_surface(
     fs::create_dir_all(&fermi_path)
         .map_err(|e| format!("Failed to create fermi surface directory: {}", e))?;
 
-    // Copy .klist file
-    let klist_dest = fermi_path.join("data.klist");
-    fs::copy(&klist_source_path, &klist_dest)
-        .map_err(|e| format!("Failed to copy klist file: {}", e))?;
+    // Copy output1 file
+    let output1_dest = fermi_path.join("data.output1");
+    fs::copy(&output1_source_path, &output1_dest)
+        .map_err(|e| format!("Failed to copy output1 file: {}", e))?;
 
-    // Copy .energy/.energyso file
-    let energy_dest = fermi_path.join("data.energy");
-    fs::copy(&energy_source_path, &energy_dest)
-        .map_err(|e| format!("Failed to copy energy file: {}", e))?;
+    // Copy output2 file
+    let output2_dest = fermi_path.join("data.output2");
+    fs::copy(&output2_source_path, &output2_dest)
+        .map_err(|e| format!("Failed to copy output2 file: {}", e))?;
 
-    // Copy .scf file
-    let scf_dest = fermi_path.join("data.scf");
-    fs::copy(&scf_source_path, &scf_dest)
-        .map_err(|e| format!("Failed to copy scf file: {}", e))?;
+    // Copy outputkgen file
+    let outputkgen_dest = fermi_path.join("data.outputkgen");
+    fs::copy(&outputkgen_source_path, &outputkgen_dest)
+        .map_err(|e| format!("Failed to copy outputkgen file: {}", e))?;
 
     // Copy .struct file
     let struct_dest = fermi_path.join("data.struct");
@@ -637,19 +637,19 @@ fn load_fermi_surface_files(
         return Err(format!("Fermi surface {} not found", fermi_surface_id));
     }
 
-    let klist_content = fs::read_to_string(fermi_path.join("data.klist"))
-        .map_err(|e| format!("Failed to read klist file: {}", e))?;
+    let output1_content = fs::read_to_string(fermi_path.join("data.output1"))
+        .map_err(|e| format!("Failed to read output1 file: {}", e))?;
 
-    let energy_content = fs::read_to_string(fermi_path.join("data.energy"))
-        .map_err(|e| format!("Failed to read energy file: {}", e))?;
+    let output2_content = fs::read_to_string(fermi_path.join("data.output2"))
+        .map_err(|e| format!("Failed to read output2 file: {}", e))?;
 
-    let scf_content = fs::read_to_string(fermi_path.join("data.scf"))
-        .map_err(|e| format!("Failed to read scf file: {}", e))?;
+    let outputkgen_content = fs::read_to_string(fermi_path.join("data.outputkgen"))
+        .map_err(|e| format!("Failed to read outputkgen file: {}", e))?;
 
     let struct_content = fs::read_to_string(fermi_path.join("data.struct"))
         .map_err(|e| format!("Failed to read struct file: {}", e))?;
 
-    Ok((klist_content, energy_content, scf_content, struct_content))
+    Ok((output1_content, output2_content, outputkgen_content, struct_content))
 }
 
 #[tauri::command]
