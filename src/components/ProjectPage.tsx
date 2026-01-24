@@ -150,26 +150,6 @@ export function ProjectPage({ project, onProjectUpdate, onEditProject, onOpenMin
         </svg>
       ),
     },
-    {
-      id: "sirius",
-      name: "SIRIUS FP-LAPW",
-      description: "Guided FP-LAPW setup and ground-state calculation",
-      icon: (
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 3v4m6.364.636-2.828 2.828M21 12h-4m-.636 6.364-2.828-2.828M12 21v-4m-6.364-.636 2.828-2.828M3 12h4m.636-6.364 2.828 2.828"
-          />
-        </svg>
-      ),
-    },
   ];
 
   return (
@@ -541,7 +521,6 @@ export function ProjectPage({ project, onProjectUpdate, onEditProject, onOpenMin
                     app.id === "band-structure" ? hasBandStructures :
                     app.id === "brillouin-zone" ? (project.has_cif && crystalData?.space_group_IT_number !== undefined) :
                     app.id === "fermi-surface" ? hasFermiSurfaces :
-                    app.id === "sirius" ? project.has_cif :
                     false
                   }
                   onClick={() => onOpenMiniApp(app.id)}

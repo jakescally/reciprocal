@@ -9,7 +9,6 @@ import { ProjectPage } from "./components/ProjectPage";
 import { BandStructurePage } from "./components/BandStructurePage";
 import { BrillouinZonePage } from "./components/BrillouinZonePage";
 import { FermiSurfacePage } from "./components/FermiSurfacePage";
-import { SiriusSolverPage } from "./components/SiriusSolverPage";
 import { cn } from "./lib/utils";
 import {
   Project,
@@ -21,7 +20,7 @@ import {
   formatRelativeTime,
 } from "./lib/projects";
 
-type MiniApp = "band-structure" | "dos" | "brillouin-zone" | "fermi-surface" | "sirius";
+type MiniApp = "band-structure" | "dos" | "brillouin-zone" | "fermi-surface";
 
 type View =
   | { type: "dashboard" }
@@ -319,7 +318,6 @@ function App() {
           {currentMiniApp === "dos" && "Density of States"}
           {currentMiniApp === "brillouin-zone" && "Brillouin Zone"}
           {currentMiniApp === "fermi-surface" && "Fermi Surface"}
-          {currentMiniApp === "sirius" && "SIRIUS Solver"}
         </h1>
       )}
 
@@ -482,9 +480,6 @@ function App() {
           )}
           {currentMiniApp === "fermi-surface" && (
             <FermiSurfacePage project={currentProject} />
-          )}
-          {currentMiniApp === "sirius" && (
-            <SiriusSolverPage project={currentProject} />
           )}
         </div>
       )}

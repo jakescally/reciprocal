@@ -1,12 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
-use std::thread;
-use std::time::Duration;
-use tauri::Emitter;
 use tauri::Manager;
 use uuid::Uuid;
 
@@ -22,20 +17,6 @@ pub struct Project {
     #[serde(default)]
     pub has_cif: bool,
     pub cif_filename: Option<String>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-struct SiriusLogEvent {
-    run_id: String,
-    level: String,
-    message: String,
-    timestamp: String,
-}
-
-#[derive(Debug, Serialize, Clone)]
-struct SiriusStatusEvent {
-    run_id: String,
-    status: String,
 }
 
 fn get_projects_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -61,27 +42,6 @@ fn get_project_dir(app: &tauri::AppHandle, project_id: &str) -> Result<PathBuf, 
         return Err(format!("Project with id {} not found", project_id));
     }
     Ok(project_dir)
-}
-
-fn get_sirius_binary(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    if let Ok(path) = std::env::var("SIRIUS_BIN") {
-        let bin_path = PathBuf::from(path);
-        if bin_path.exists() {
-            return Ok(bin_path);
-        }
-        return Err("SIRIUS_BIN is set but the path does not exist".to_string());
-    }
-
-    let resource_dir = app
-        .path()
-        .resource_dir()
-        .map_err(|e| format!("Failed to resolve resource dir: {}", e))?;
-    let bundled = resource_dir.join("sirius").join("bin").join("sirius");
-    if bundled.exists() {
-        return Ok(bundled);
-    }
-
-    Err("SIRIUS binary not found. Set SIRIUS_BIN or bundle resources/sirius/bin/sirius".to_string())
 }
 
 #[tauri::command]
@@ -671,172 +631,6 @@ fn delete_fermi_surface(
     Ok(())
 }
 
-#[tauri::command]
-fn start_sirius_run(app: tauri::AppHandle, project_id: String) -> Result<String, String> {
-    let run_id = Uuid::new_v4().to_string();
-    let app_handle = app.clone();
-    let run_id_clone = run_id.clone();
-    let project_dir = get_project_dir(&app, &project_id)?;
-    let run_dir = project_dir.join("sirius_runs").join(&run_id);
-    fs::create_dir_all(&run_dir)
-        .map_err(|e| format!("Failed to create run directory: {}", e))?;
-    let input_path = run_dir.join("input.json");
-    let input_stub = serde_json::json!({
-        "control": {},
-        "parameters": {}
-    });
-    fs::write(&input_path, serde_json::to_string_pretty(&input_stub).unwrap())
-        .map_err(|e| format!("Failed to write input.json: {}", e))?;
-    let sirius_bin = get_sirius_binary(&app)?;
-
-    thread::spawn(move || {
-        thread::sleep(Duration::from_millis(200));
-        let _ = app_handle.emit(
-            "sirius-status",
-            SiriusStatusEvent {
-                run_id: run_id_clone.clone(),
-                status: "running".to_string(),
-            },
-        );
-
-        let _ = app_handle.emit(
-            "sirius-log",
-            SiriusLogEvent {
-                run_id: run_id_clone.clone(),
-                level: "info".to_string(),
-                message: format!("Launching SIRIUS: {}", sirius_bin.display()),
-                timestamp: Utc::now().to_rfc3339(),
-            },
-        );
-        let _ = app_handle.emit(
-            "sirius-log",
-            SiriusLogEvent {
-                run_id: run_id_clone.clone(),
-                level: "info".to_string(),
-                message: format!("Working directory: {}", run_dir.display()),
-                timestamp: Utc::now().to_rfc3339(),
-            },
-        );
-        let _ = app_handle.emit(
-            "sirius-log",
-            SiriusLogEvent {
-                run_id: run_id_clone.clone(),
-                level: "info".to_string(),
-                message: format!("Input: {}", input_path.display()),
-                timestamp: Utc::now().to_rfc3339(),
-            },
-        );
-
-        let mut child = match Command::new(&sirius_bin)
-            .arg("-i")
-            .arg(&input_path)
-            .current_dir(&run_dir)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-        {
-            Ok(child) => child,
-            Err(err) => {
-                let _ = app_handle.emit(
-                    "sirius-log",
-                    SiriusLogEvent {
-                        run_id: run_id_clone.clone(),
-                        level: "error".to_string(),
-                        message: format!("Failed to start SIRIUS: {}", err),
-                        timestamp: Utc::now().to_rfc3339(),
-                    },
-                );
-                let _ = app_handle.emit(
-                    "sirius-status",
-                    SiriusStatusEvent {
-                        run_id: run_id_clone,
-                        status: "failed".to_string(),
-                    },
-                );
-                return;
-            }
-        };
-
-        if let Some(stdout) = child.stdout.take() {
-            let app_handle = app_handle.clone();
-            let run_id = run_id_clone.clone();
-            thread::spawn(move || {
-                let reader = BufReader::new(stdout);
-                for line in reader.lines().flatten() {
-                    let _ = app_handle.emit(
-                        "sirius-log",
-                        SiriusLogEvent {
-                            run_id: run_id.clone(),
-                            level: "info".to_string(),
-                            message: line,
-                            timestamp: Utc::now().to_rfc3339(),
-                        },
-                    );
-                }
-            });
-        }
-
-        if let Some(stderr) = child.stderr.take() {
-            let app_handle = app_handle.clone();
-            let run_id = run_id_clone.clone();
-            thread::spawn(move || {
-                let reader = BufReader::new(stderr);
-                for line in reader.lines().flatten() {
-                    let _ = app_handle.emit(
-                        "sirius-log",
-                        SiriusLogEvent {
-                            run_id: run_id.clone(),
-                            level: "error".to_string(),
-                            message: line,
-                            timestamp: Utc::now().to_rfc3339(),
-                        },
-                    );
-                }
-            });
-        }
-
-        let status = match child.wait() {
-            Ok(status) => status,
-            Err(err) => {
-                let _ = app_handle.emit(
-                    "sirius-log",
-                    SiriusLogEvent {
-                        run_id: run_id_clone.clone(),
-                        level: "error".to_string(),
-                        message: format!("Failed to wait for SIRIUS: {}", err),
-                        timestamp: Utc::now().to_rfc3339(),
-                    },
-                );
-                let _ = app_handle.emit(
-                    "sirius-status",
-                    SiriusStatusEvent {
-                        run_id: run_id_clone,
-                        status: "failed".to_string(),
-                    },
-                );
-                return;
-            }
-        };
-
-        let status_text = if status.success() {
-            "completed"
-        } else {
-            "failed"
-        };
-
-        let _ = app_handle.emit(
-            "sirius-status",
-            SiriusStatusEvent {
-                run_id: run_id_clone,
-                status: status_text.to_string(),
-            },
-        );
-    });
-
-    let _ = project_id;
-    Ok(run_id)
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -864,8 +658,7 @@ pub fn run() {
             import_fermi_surface,
             list_fermi_surfaces,
             load_fermi_surface_files,
-            delete_fermi_surface,
-            start_sirius_run
+            delete_fermi_surface
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
