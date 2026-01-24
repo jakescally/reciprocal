@@ -241,6 +241,58 @@ export async function loadBandStructureAtomNames(
   return null;
 }
 
+// ============ Fermi Surface Functions ============
+
+export interface FermiSurfaceInfo {
+  id: string;
+  name: string;
+  created_at: string;
+  case_name: string;
+}
+
+export async function importFermiSurface(
+  projectId: string,
+  name: string,
+  klistSourcePath: string,
+  energySourcePath: string,
+  scfSourcePath: string,
+  structSourcePath: string,
+  caseName: string
+): Promise<FermiSurfaceInfo> {
+  return invoke<FermiSurfaceInfo>("import_fermi_surface", {
+    projectId,
+    name,
+    klistSourcePath,
+    energySourcePath,
+    scfSourcePath,
+    structSourcePath,
+    caseName,
+  });
+}
+
+export async function listFermiSurfaces(
+  projectId: string
+): Promise<FermiSurfaceInfo[]> {
+  return invoke<FermiSurfaceInfo[]>("list_fermi_surfaces", { projectId });
+}
+
+export async function loadFermiSurfaceFiles(
+  projectId: string,
+  fermiSurfaceId: string
+): Promise<[string, string, string, string]> {
+  return invoke<[string, string, string, string]>("load_fermi_surface_files", {
+    projectId,
+    fermiSurfaceId,
+  });
+}
+
+export async function deleteFermiSurface(
+  projectId: string,
+  fermiSurfaceId: string
+): Promise<void> {
+  return invoke<void>("delete_fermi_surface", { projectId, fermiSurfaceId });
+}
+
 export function formatRelativeTime(isoString: string): string {
   const date = new Date(isoString);
   const now = new Date();

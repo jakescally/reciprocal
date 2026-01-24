@@ -4,6 +4,7 @@ import {
   CrystalData,
   loadCrystalData,
   listBandStructures,
+  listFermiSurfaces,
   formatRelativeTime,
 } from "../lib/projects";
 import { cn } from "../lib/utils";
@@ -25,8 +26,9 @@ export function ProjectPage({ project, onProjectUpdate, onEditProject, onOpenMin
   const [crystalData, setCrystalData] = useState<CrystalData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasBandStructures, setHasBandStructures] = useState(false);
+  const [hasFermiSurfaces, setHasFermiSurfaces] = useState(false);
 
-  // Load crystal data and check for band structures on mount or when project changes
+  // Load crystal data and check for band structures/fermi surfaces on mount or when project changes
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -37,6 +39,14 @@ export function ProjectPage({ project, onProjectUpdate, onEditProject, onOpenMin
         setHasBandStructures(bandStructures.length > 0);
       } catch {
         setHasBandStructures(false);
+      }
+
+      // Check if fermi surfaces exist
+      try {
+        const fermiSurfaces = await listFermiSurfaces(project.id);
+        setHasFermiSurfaces(fermiSurfaces.length > 0);
+      } catch {
+        setHasFermiSurfaces(false);
       }
       try {
         if (project.has_cif) {
@@ -116,6 +126,26 @@ export function ProjectPage({ project, onProjectUpdate, onEditProject, onOpenMin
             strokeLinejoin="round"
             strokeWidth={2}
             d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: "fermi-surface",
+      name: "Fermi Surface",
+      description: "3D Fermi surface from Wien2k calculations",
+      icon: (
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
       ),
@@ -510,6 +540,7 @@ export function ProjectPage({ project, onProjectUpdate, onEditProject, onOpenMin
                   hasData={
                     app.id === "band-structure" ? hasBandStructures :
                     app.id === "brillouin-zone" ? (project.has_cif && crystalData?.space_group_IT_number !== undefined) :
+                    app.id === "fermi-surface" ? hasFermiSurfaces :
                     app.id === "sirius" ? project.has_cif :
                     false
                   }

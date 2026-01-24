@@ -1,7 +1,9 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 use tauri::Emitter;
@@ -48,6 +50,36 @@ fn get_projects_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     }
 
     Ok(projects_dir)
+}
+
+fn get_project_dir(app: &tauri::AppHandle, project_id: &str) -> Result<PathBuf, String> {
+    let projects_dir = get_projects_dir(app)?;
+    let project_dir = projects_dir.join(project_id);
+    if !project_dir.exists() {
+        return Err(format!("Project with id {} not found", project_id));
+    }
+    Ok(project_dir)
+}
+
+fn get_sirius_binary(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    if let Ok(path) = std::env::var("SIRIUS_BIN") {
+        let bin_path = PathBuf::from(path);
+        if bin_path.exists() {
+            return Ok(bin_path);
+        }
+        return Err("SIRIUS_BIN is set but the path does not exist".to_string());
+    }
+
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|e| format!("Failed to resolve resource dir: {}", e))?;
+    let bundled = resource_dir.join("sirius").join("bin").join("sirius");
+    if bundled.exists() {
+        return Ok(bundled);
+    }
+
+    Err("SIRIUS binary not found. Set SIRIUS_BIN or bundle resources/sirius/bin/sirius".to_string())
 }
 
 #[tauri::command]
@@ -149,17 +181,6 @@ fn delete_project(app: tauri::AppHandle, id: String) -> Result<(), String> {
         .map_err(|e| format!("Failed to delete project directory: {}", e))?;
 
     Ok(())
-}
-
-fn get_project_dir(app: &tauri::AppHandle, project_id: &str) -> Result<PathBuf, String> {
-    let projects_dir = get_projects_dir(app)?;
-    let project_dir = projects_dir.join(project_id);
-
-    if !project_dir.exists() {
-        return Err(format!("Project directory for {} not found", project_id));
-    }
-
-    Ok(project_dir)
 }
 
 #[tauri::command]
@@ -461,11 +482,177 @@ fn load_band_structure_atom_names(
     Ok(Some(content))
 }
 
+// ============ Fermi Surface Commands ============
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FermiSurfaceInfo {
+    pub id: String,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
+    pub case_name: String,
+}
+
+fn get_fermi_surfaces_dir(app: &tauri::AppHandle, project_id: &str) -> Result<PathBuf, String> {
+    let project_dir = get_project_dir(app, project_id)?;
+    let fermi_dir = project_dir.join("fermi_surfaces");
+
+    if !fermi_dir.exists() {
+        fs::create_dir_all(&fermi_dir)
+            .map_err(|e| format!("Failed to create fermi_surfaces directory: {}", e))?;
+    }
+
+    Ok(fermi_dir)
+}
+
+#[tauri::command]
+fn import_fermi_surface(
+    app: tauri::AppHandle,
+    project_id: String,
+    name: String,
+    klist_source_path: String,
+    energy_source_path: String,
+    scf_source_path: String,
+    struct_source_path: String,
+    case_name: String,
+) -> Result<FermiSurfaceInfo, String> {
+    let fermi_dir = get_fermi_surfaces_dir(&app, &project_id)?;
+
+    let id = Uuid::new_v4().to_string();
+    let fermi_path = fermi_dir.join(&id);
+    fs::create_dir_all(&fermi_path)
+        .map_err(|e| format!("Failed to create fermi surface directory: {}", e))?;
+
+    // Copy .klist file
+    let klist_dest = fermi_path.join("data.klist");
+    fs::copy(&klist_source_path, &klist_dest)
+        .map_err(|e| format!("Failed to copy klist file: {}", e))?;
+
+    // Copy .energy/.energyso file
+    let energy_dest = fermi_path.join("data.energy");
+    fs::copy(&energy_source_path, &energy_dest)
+        .map_err(|e| format!("Failed to copy energy file: {}", e))?;
+
+    // Copy .scf file
+    let scf_dest = fermi_path.join("data.scf");
+    fs::copy(&scf_source_path, &scf_dest)
+        .map_err(|e| format!("Failed to copy scf file: {}", e))?;
+
+    // Copy .struct file
+    let struct_dest = fermi_path.join("data.struct");
+    fs::copy(&struct_source_path, &struct_dest)
+        .map_err(|e| format!("Failed to copy struct file: {}", e))?;
+
+    let info = FermiSurfaceInfo {
+        id,
+        name,
+        created_at: Utc::now(),
+        case_name,
+    };
+
+    // Save metadata
+    let info_path = fermi_path.join("info.json");
+    let content = serde_json::to_string_pretty(&info)
+        .map_err(|e| format!("Failed to serialize fermi surface info: {}", e))?;
+    fs::write(&info_path, content)
+        .map_err(|e| format!("Failed to write fermi surface info: {}", e))?;
+
+    Ok(info)
+}
+
+#[tauri::command]
+fn list_fermi_surfaces(
+    app: tauri::AppHandle,
+    project_id: String,
+) -> Result<Vec<FermiSurfaceInfo>, String> {
+    let fermi_dir = get_fermi_surfaces_dir(&app, &project_id)?;
+    let mut results = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(&fermi_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let info_path = path.join("info.json");
+                if info_path.exists() {
+                    if let Ok(content) = fs::read_to_string(&info_path) {
+                        if let Ok(info) = serde_json::from_str::<FermiSurfaceInfo>(&content) {
+                            results.push(info);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort by created_at descending
+    results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+
+    Ok(results)
+}
+
+#[tauri::command]
+fn load_fermi_surface_files(
+    app: tauri::AppHandle,
+    project_id: String,
+    fermi_surface_id: String,
+) -> Result<(String, String, String, String), String> {
+    let fermi_dir = get_fermi_surfaces_dir(&app, &project_id)?;
+    let fermi_path = fermi_dir.join(&fermi_surface_id);
+
+    if !fermi_path.exists() {
+        return Err(format!("Fermi surface {} not found", fermi_surface_id));
+    }
+
+    let klist_content = fs::read_to_string(fermi_path.join("data.klist"))
+        .map_err(|e| format!("Failed to read klist file: {}", e))?;
+
+    let energy_content = fs::read_to_string(fermi_path.join("data.energy"))
+        .map_err(|e| format!("Failed to read energy file: {}", e))?;
+
+    let scf_content = fs::read_to_string(fermi_path.join("data.scf"))
+        .map_err(|e| format!("Failed to read scf file: {}", e))?;
+
+    let struct_content = fs::read_to_string(fermi_path.join("data.struct"))
+        .map_err(|e| format!("Failed to read struct file: {}", e))?;
+
+    Ok((klist_content, energy_content, scf_content, struct_content))
+}
+
+#[tauri::command]
+fn delete_fermi_surface(
+    app: tauri::AppHandle,
+    project_id: String,
+    fermi_surface_id: String,
+) -> Result<(), String> {
+    let fermi_dir = get_fermi_surfaces_dir(&app, &project_id)?;
+    let fermi_path = fermi_dir.join(&fermi_surface_id);
+
+    if !fermi_path.exists() {
+        return Err(format!("Fermi surface {} not found", fermi_surface_id));
+    }
+
+    fs::remove_dir_all(&fermi_path)
+        .map_err(|e| format!("Failed to delete fermi surface: {}", e))?;
+
+    Ok(())
+}
+
 #[tauri::command]
 fn start_sirius_run(app: tauri::AppHandle, project_id: String) -> Result<String, String> {
     let run_id = Uuid::new_v4().to_string();
     let app_handle = app.clone();
     let run_id_clone = run_id.clone();
+    let project_dir = get_project_dir(&app, &project_id)?;
+    let run_dir = project_dir.join("sirius_runs").join(&run_id);
+    fs::create_dir_all(&run_dir)
+        .map_err(|e| format!("Failed to create run directory: {}", e))?;
+    let input_path = run_dir.join("input.json");
+    let input_stub = serde_json::json!({
+        "control": {},
+        "parameters": {}
+    });
+    fs::write(&input_path, serde_json::to_string_pretty(&input_stub).unwrap())
+        .map_err(|e| format!("Failed to write input.json: {}", e))?;
+    let sirius_bin = get_sirius_binary(&app)?;
 
     thread::spawn(move || {
         thread::sleep(Duration::from_millis(200));
@@ -477,36 +664,136 @@ fn start_sirius_run(app: tauri::AppHandle, project_id: String) -> Result<String,
             },
         );
 
-        let messages = vec![
-            "Initializing SIRIUS run",
-            "Reading structure data",
-            "Building basis and k-mesh",
-            "Starting SCF loop",
-            "SCF iteration 1/8",
-            "SCF iteration 4/8",
-            "SCF iteration 8/8",
-            "Finalizing outputs",
-            "Run complete",
-        ];
+        let _ = app_handle.emit(
+            "sirius-log",
+            SiriusLogEvent {
+                run_id: run_id_clone.clone(),
+                level: "info".to_string(),
+                message: format!("Launching SIRIUS: {}", sirius_bin.display()),
+                timestamp: Utc::now().to_rfc3339(),
+            },
+        );
+        let _ = app_handle.emit(
+            "sirius-log",
+            SiriusLogEvent {
+                run_id: run_id_clone.clone(),
+                level: "info".to_string(),
+                message: format!("Working directory: {}", run_dir.display()),
+                timestamp: Utc::now().to_rfc3339(),
+            },
+        );
+        let _ = app_handle.emit(
+            "sirius-log",
+            SiriusLogEvent {
+                run_id: run_id_clone.clone(),
+                level: "info".to_string(),
+                message: format!("Input: {}", input_path.display()),
+                timestamp: Utc::now().to_rfc3339(),
+            },
+        );
 
-        for message in messages {
-            thread::sleep(Duration::from_millis(420));
-            let _ = app_handle.emit(
-                "sirius-log",
-                SiriusLogEvent {
-                    run_id: run_id_clone.clone(),
-                    level: "info".to_string(),
-                    message: message.to_string(),
-                    timestamp: Utc::now().to_rfc3339(),
-                },
-            );
+        let mut child = match Command::new(&sirius_bin)
+            .arg("-i")
+            .arg(&input_path)
+            .current_dir(&run_dir)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+        {
+            Ok(child) => child,
+            Err(err) => {
+                let _ = app_handle.emit(
+                    "sirius-log",
+                    SiriusLogEvent {
+                        run_id: run_id_clone.clone(),
+                        level: "error".to_string(),
+                        message: format!("Failed to start SIRIUS: {}", err),
+                        timestamp: Utc::now().to_rfc3339(),
+                    },
+                );
+                let _ = app_handle.emit(
+                    "sirius-status",
+                    SiriusStatusEvent {
+                        run_id: run_id_clone,
+                        status: "failed".to_string(),
+                    },
+                );
+                return;
+            }
+        };
+
+        if let Some(stdout) = child.stdout.take() {
+            let app_handle = app_handle.clone();
+            let run_id = run_id_clone.clone();
+            thread::spawn(move || {
+                let reader = BufReader::new(stdout);
+                for line in reader.lines().flatten() {
+                    let _ = app_handle.emit(
+                        "sirius-log",
+                        SiriusLogEvent {
+                            run_id: run_id.clone(),
+                            level: "info".to_string(),
+                            message: line,
+                            timestamp: Utc::now().to_rfc3339(),
+                        },
+                    );
+                }
+            });
         }
+
+        if let Some(stderr) = child.stderr.take() {
+            let app_handle = app_handle.clone();
+            let run_id = run_id_clone.clone();
+            thread::spawn(move || {
+                let reader = BufReader::new(stderr);
+                for line in reader.lines().flatten() {
+                    let _ = app_handle.emit(
+                        "sirius-log",
+                        SiriusLogEvent {
+                            run_id: run_id.clone(),
+                            level: "error".to_string(),
+                            message: line,
+                            timestamp: Utc::now().to_rfc3339(),
+                        },
+                    );
+                }
+            });
+        }
+
+        let status = match child.wait() {
+            Ok(status) => status,
+            Err(err) => {
+                let _ = app_handle.emit(
+                    "sirius-log",
+                    SiriusLogEvent {
+                        run_id: run_id_clone.clone(),
+                        level: "error".to_string(),
+                        message: format!("Failed to wait for SIRIUS: {}", err),
+                        timestamp: Utc::now().to_rfc3339(),
+                    },
+                );
+                let _ = app_handle.emit(
+                    "sirius-status",
+                    SiriusStatusEvent {
+                        run_id: run_id_clone,
+                        status: "failed".to_string(),
+                    },
+                );
+                return;
+            }
+        };
+
+        let status_text = if status.success() {
+            "completed"
+        } else {
+            "failed"
+        };
 
         let _ = app_handle.emit(
             "sirius-status",
             SiriusStatusEvent {
                 run_id: run_id_clone,
-                status: "completed".to_string(),
+                status: status_text.to_string(),
             },
         );
     });
@@ -538,6 +825,10 @@ pub fn run() {
             load_band_structure_labels,
             update_band_structure_atom_names,
             load_band_structure_atom_names,
+            import_fermi_surface,
+            list_fermi_surfaces,
+            load_fermi_surface_files,
+            delete_fermi_surface,
             start_sirius_run
         ])
         .run(tauri::generate_context!())
